@@ -13,11 +13,14 @@ import uuid
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware import Middleware
+#nuevo
+from myapp.routes import analytics
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
-
+#nuevo
+app.include_router(analytics.router)
 def get_db():
     db = SessionLocal()
     try:
