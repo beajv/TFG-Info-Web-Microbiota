@@ -66,69 +66,42 @@
           </ul>
           <br />
           <ul class="list-group">
-            <li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center">
-              Groups
-            </li>
+            <li class="list-group-item list-group-item-dark">
+              <label for="groupSelector">Groups</label>
+              <select class="form-select mt-2" id="groupSelector" @change="handleGroupSelection($event)">
+                
+                <option value="">-- Select group --</option>
+                <option value="1">Grupo 1</option>
+                <option value="2">Grupo 2</option>
+                <option value="3">Grupo 3</option>
+              </select>
 
-            <!-- Grupo 1 -->
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              <input
-                class="form-check-input me-2"
-                type="checkbox"
-                @click="toggleGroup(1)"
-                :checked="selectedGroups.includes(1)"
-              />
-              1
             </li>
-            <ul v-if="selectedGroups.includes(1)" class="list-group">
-              <li class="list-group-item text-muted">MALE_FACTOR</li>
-              <li class="list-group-item text-muted">TUBAL_FACTOR</li>
-            </ul>
-
-            <!-- Grupo 2 -->
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              <input
-                class="form-check-input me-2"
-                type="checkbox"
-                @click="toggleGroup(2)"
-                :checked="selectedGroups.includes(2)"
-              />
-              2
-            </li>
-            <ul v-if="selectedGroups.includes(2)" class="list-group">
-              <li class="list-group-item text-muted">RM</li>
-              <li class="list-group-item text-muted">ENDOMETRIOSIS</li>
-              <li class="list-group-item text-muted">ENDOMETRITIS</li>
-              <li class="list-group-item text-muted">MIOMA</li>
-              <li class="list-group-item text-muted">RIF</li>
-              <li class="list-group-item text-muted">UNEXPLAINED</li>
-            </ul>
-
-            <!-- Grupo 3 -->
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              <input
-                class="form-check-input me-2"
-                type="checkbox"
-                @click="toggleGroup(3)"
-                :checked="selectedGroups.includes(3)"
-              />
-              3
-            </li>
-            <ul v-if="selectedGroups.includes(3)" class="list-group">
-              <li class="list-group-item text-muted">No conditions available</li>
-            </ul>
           </ul>
+          <br />
+          
           <br />
           <ul class="list-group">
             <li class="list-group-item list-group-item-dark">Condition</li>
-            <li class="list-group-item"> <input class="form-check-input me-1 disease-check" @click="filterDisease('RM')" type="checkbox"/>RM <span class="badge badge-pill bg-secondary float-end"> {{ numRM }} </span></li>
-            <li class="list-group-item"> <input class="form-check-input me-1 disease-check" @click="filterDisease('MALE_FACTOR')" type="checkbox"/>MALE_FACTOR<span class="badge badge-pill bg-secondary float-end"> {{ numMALE_FACTOR }} </span></li>
-            <li class="list-group-item"> <input class="form-check-input me-1 disease-check" @click="filterDisease('TUBAL_FACTOR')" type="checkbox"/>TUBAL_FACTOR<span class="badge badge-pill bg-secondary float-end"> {{ numTUBAL_FACTOR }} </span></li>
-            <li class="list-group-item"> <input class="form-check-input me-1 disease-check" @click="filterDisease('ENDOMETRIOSIS')" type="checkbox"/>ENDOMETRIOSIS<span class="badge badge-pill bg-secondary float-end"> {{ numENDOMETRIOSIS }} </span></li>
-            <li class="list-group-item"> <input class="form-check-input me-1 disease-check" @click="filterDisease('ENDOMETRITIS')" type="checkbox"/>ENDOMETRITIS<span class="badge badge-pill bg-secondary float-end"> {{ numENDOMETRITIS }} </span></li>
-            <li class="list-group-item"> <input class="form-check-input me-1 disease-check" @click="filterDisease('MIOMA')" type="checkbox"/>MIOMA<span class="badge badge-pill bg-secondary float-end"> {{ numMIOMA }} </span></li>
-            <li class="list-group-item"> <input class="form-check-input me-1 disease-check" @click="filterDisease('RIF')" type="checkbox"/>RIF<span class="badge badge-pill bg-secondary float-end"> {{ numRIF }} </span></li>
-            <li class="list-group-item"> <input class="form-check-input me-1 disease-check" @click="filterDisease('UNEXPLAINED')" type="checkbox"/>UNEXPLAINED<span class="badge badge-pill bg-secondary float-end"> {{ numUNEXPLAINED }} </span></li>
+            <li class="list-group-item d-flex justify-content-between flex-wrap align-items-center" v-for="disease in diseases" :key="disease.name">
+              <div class="d-flex align-items-center flex-wrap overflow-hidden">
+                <input
+                  class="form-check-input me-1 disease-check"
+                  :id="'check_' + disease.name"
+                  type="checkbox"
+                  :value="disease.name"
+                  v-model="myList"
+                />
+                {{ disease.name }}
+                <span class="badge badge-pill bg-secondary ms-2">{{ getCount(disease.name) }}</span>
+              </div>
+              <select class="form-select form-select-sm w-auto "  v-model.number="disease.group" @change="updateGroupAssignments">
+                <option value="0">Sin grupo</option>
+                <option value="1">Grupo 1</option>
+                <option value="2">Grupo 2</option>
+                <option value="3">Grupo 3</option>
+              </select>
+            </li>
           </ul>
         </div>
       </div>
@@ -150,14 +123,30 @@
     box-shadow: none !important;
     border-color: transparent !important;
 }
+
+
+
 </style>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick, reactive} from 'vue'
 import axios from 'axios'
 import { useRoute } from 'vue-router';
+
+
+
 const route = useRoute();
 
+const diseases = reactive([
+  { name: 'RM', group: 0 },
+  { name: 'MALE_FACTOR', group: 0 },
+  { name: 'TUBAL_FACTOR', group: 0 },
+  { name: 'ENDOMETRIOSIS', group: 0 },
+  { name: 'ENDOMETRITIS', group: 0 },
+  { name: 'MIOMA', group: 0 },
+  { name: 'RIF', group: 0 },
+  { name: 'UNEXPLAINED', group: 0 }
+]);
 
 interface Item {
   [key: string]: any;
@@ -190,10 +179,71 @@ const mother = ref({})
 
 
 
-
+function getCount(disease: string) {
+  return eval('num' + disease);
+}
+/*
+function updateGroupAssignments() {
+  // Cuando el usuario cambia el grupo desde el desplegable, actualizamos los grupos seleccionados si aplica
+  selectedGroups.value = [...new Set(diseases.value.map(d => d.group).filter(g => g > 0))];
+  updateItems();
+}*/
 function countCases(site: string) {
   var filtrados = originalItems.value.filter(item => item.diseases === site) 
   return filtrados.length
+}
+
+function toggleDisease(disease: string) {
+  const index = myList.value.indexOf(disease);
+  if (index === -1) {
+    myList.value.push(disease);
+  } else {
+    myList.value.splice(index, 1);
+  }
+  updateItems();
+}
+/*
+function updateGroupAssignments() {
+  // Actualizamos los grupos seleccionados para reflejar los usados actualmente
+  selectedGroups.value = [...new Set(diseases.value.map(d => d.group).filter(g => g > 0))];
+
+  // Si ya hay un grupo seleccionado, actualizamos myList para reflejar las enfermedades de ese grupo
+  if (selectedGroups.value.length === 1) {
+    const selected = selectedGroups.value[0];
+
+    const selectedDiseases = diseases.value
+      .filter(d => d.group === selected)
+      .map(d => d.name);
+
+    myList.value = [...selectedDiseases];
+
+    // Esto es clave para que los ticks se actualicen visualmente
+    /*nextTick(() => {
+      selectedDiseases.forEach(disease => {
+        const checkbox = document.getElementById('check_' + disease) as HTMLInputElement;
+        if (checkbox) checkbox.checked = true;
+      });
+    });
+
+    updateItems();
+  }
+}*/
+function updateGroupAssignments() {
+  if (selectedGroups.value.length === 1) {
+    const selected = selectedGroups.value[0];
+
+    // Recalcular qué enfermedades pertenecen a ese grupo
+    const selectedDiseases = diseases
+      .filter(d => d.group === selected)
+      .map(d => d.name);
+
+    // Actualizar la lista de seleccionados
+    myList.value = [...selectedDiseases];
+    console.log("Enfermedades que pertenecen al grupo seleccionado:", selectedDiseases);
+    console.log("Estado de diseases:", JSON.stringify(diseases, null, 2));
+
+    updateItems();
+  }
 }
 
 
@@ -220,12 +270,12 @@ function loadData(site: string){
       numUNEXPLAINED.value = countCases('UNEXPLAINED')
       updateItems()
 
-
+      /*  **No es necesario porque usamos v-model="myList"
       const inputs = document.querySelectorAll('.disease-check');
       inputs.forEach((elem) => {
            (elem as HTMLInputElement).checked = true
       });
-      
+      */
       
     })
     .catch((error) => {
@@ -234,7 +284,7 @@ function loadData(site: string){
 }
 
 // Cuando selecciona un grupo debería marcar automáticamente las condiciones correspondientes
-
+/*
 function toggleGroup(groupNumber: number) {
   if (selectedGroups.value.includes(groupNumber)) {
     // Si el grupo ya está seleccionado, lo quitamos
@@ -256,7 +306,7 @@ function toggleGroup(groupNumber: number) {
       filterDisease('UNEXPLAINED');
     }
   }
-}
+}*/
 /*
 function filterBySelectedGroups() {
   console.log("Grupos seleccionados:", selectedGroups.value);
@@ -276,6 +326,104 @@ function filterBySelectedGroups() {
 
   console.log("Datos filtrados:", filteredData);
 }*/
+/*
+function handleGroupSelection(event: Event) {
+  const selected = parseInt((event.target as HTMLSelectElement).value);
+  if (!selected) return;
+
+  if (!selectedGroups.value.includes(selected)) {
+    selectedGroups.value.push(selected);
+  }
+
+  if (selected === 1) {
+    filterDisease('MALE_FACTOR');
+    filterDisease('TUBAL_FACTOR');
+  } else if (selected === 2) {
+    filterDisease('RM');
+    filterDisease('ENDOMETRIOSIS');
+    filterDisease('ENDOMETRITIS');
+    filterDisease('MIOMA');
+    filterDisease('RIF');
+    filterDisease('UNEXPLAINED');
+  } else if (selected === 3) {
+    // Este grupo representa sin condición
+    myList.value = myList.value.filter(val =>
+      !['RM', 'MALE_FACTOR', 'TUBAL_FACTOR', 'ENDOMETRIOSIS', 'ENDOMETRITIS', 'MIOMA', 'RIF', 'UNEXPLAINED'].includes(val)
+    );
+    updateItems();
+  }
+}
+
+function handleGroupSelection(event: Event) {
+  const selected = Array.from((event.target as HTMLSelectElement).selectedOptions).map(option =>
+    parseInt(option.value)
+  );
+  selectedGroups.value = selected;
+
+  myList.value = [];
+
+  const diseaseGroups: { [key: number]: string[] } = {
+    1: ['MALE_FACTOR', 'TUBAL_FACTOR'],
+    2: ['RM', 'ENDOMETRIOSIS', 'ENDOMETRITIS', 'MIOMA', 'RIF', 'UNEXPLAINED'],
+  };
+
+  // Reset checkboxes visuales
+  const inputs = document.querySelectorAll('.disease-check') as NodeListOf<HTMLInputElement>;
+  inputs.forEach(elem => (elem.checked = false));
+
+  selectedGroups.value.forEach(group => {
+    if (diseaseGroups[group]) {
+      diseaseGroups[group].forEach(disease => {
+        if (!myList.value.includes(disease)) {
+          myList.value.push(disease);
+
+          const checkbox = document.getElementById('check_' + disease) as HTMLInputElement;
+          if (checkbox) checkbox.checked = true;
+        }
+      });
+    } else if (group === 3) {
+      const known = Object.values(diseaseGroups).flat();
+      const noCondition = originalItems.value.filter(item => !known.includes(item.diseases));
+      const unique = [...new Set(noCondition.map(i => i.diseases))].filter(Boolean);
+      myList.value.push(...unique);
+    }
+  });
+
+  updateItems();
+}
+*/
+function handleGroupSelection(event: Event) {
+  const selected = parseInt((event.target as HTMLSelectElement).value);
+  if (!selected) return;
+
+  selectedGroups.value = [selected];
+
+  // Encuentra las enfermedades asignadas a este grupo
+  const assigned = diseases
+    .filter(d => d.group === selected)
+    .map(d => d.name);
+
+  // Asigna esas enfermedades a myList
+  myList.value = []; // limpia antes
+
+  nextTick(() => {
+    myList.value = [...assigned];
+
+    console.log("myList después de asignar:", myList.value);
+
+    // Recorre los checkbox del DOM
+    const checkboxes = document.querySelectorAll('.disease-check');
+    checkboxes.forEach((c) => {
+      console.log("Checkbox ID:", c.id, " Value:", (c as HTMLInputElement).value);
+    });
+
+    updateItems();
+  });
+}
+
+
+
+
 
 
 onMounted(() => {
@@ -290,6 +438,13 @@ onMounted(() => {
     .catch((error) => {
       console.error('Error:', error)
     })
+    //COmprobación
+    nextTick(() => {
+    const checks = document.querySelectorAll('.disease-check') as NodeListOf<HTMLInputElement>;
+    checks.forEach(c => {
+      console.log("Checkbox ID:", c.id, " Value:", c.value);
+    });
+  });
 
 })
 
