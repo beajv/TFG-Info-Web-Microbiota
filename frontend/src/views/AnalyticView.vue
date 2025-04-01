@@ -110,6 +110,30 @@
         <h3>Analytics Section</h3>
         <p>Here you can visualize and analyze selected data.</p>
       </div>
+      <div class="mt-4">
+            <h5>Índice de Shannon por muestra</h5>
+            <table class="table table-sm table-striped">
+              <thead>
+                <tr>
+                  <th>Muestra</th>
+                  <th>Condition</th>
+                  <th>Shannon</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in filteredShannonResults" :key="row.sample_id">
+                  <td>{{ row.sample_id }}</td>
+                  <td>{{ row.diseases }}</td>
+                  <td>{{ row.shannon.toFixed(4) }}</td>
+                </tr>
+              </tbody>
+            </table>  
+            <div class="Grafico Shannon">
+              <canvas id="shannonBoxplotChart" style="max-width: 700px;"></canvas>
+
+          </div>
+          </div>
+          
     </div>
   </div>
 </template>
@@ -129,10 +153,34 @@
 </style>
 
 <script lang="ts" setup>
-import { ref, onMounted, nextTick, reactive} from 'vue'
+import { ref, onMounted, nextTick, reactive, computed} from 'vue'
 import axios from 'axios'
 import { useRoute } from 'vue-router';
 
+//Para boxplot
+/*
+<VueChart
+              :type="'boxplot'"
+              :data="shannonBoxData"
+              :options="chartOptions"
+              style="max-width: 700px;"
+            />
+            */
+ import { Chart, registerables } from 'chart.js';import 'chartjs-chart-box-and-violin-plot/build/Chart.BoxPlot.js' // Importa el script directamente
+
+Chart.register(...registerables);
+console.log("Controladores registrados:", Chart.registry.controllers);
+console.log("Controladores disponibles:", Object.keys(Chart.registry.controllers));
+
+declare module 'chart.js' {
+  interface ChartTypeRegistry {
+    boxplot: {
+      chartOptions: any;
+      datasetOptions: any;
+      defaultDataPoint: number[];
+    };
+  }
+}
 
 
 const route = useRoute();
@@ -176,12 +224,76 @@ const numRIF = ref(0)
 const numUNEXPLAINED = ref(0)
 
 const mother = ref({})
+//Guardar resultados Shannon
+const shannonResults = ref<any[]>([]);
+
+  const shannonBoxOptions = {
+  responsive: true,
+  plugins: {
+    legend: { display: false },
+    title: { display: true, text: 'Distribución del Índice de Shannon por Grupo' }
+  }
+}
+const chartOptions = {
+  responsive: true,
+  plugins: {
+    legend: { display: false },
+    title: {
+      display: true,
+      text: 'Distribución del Índice de Shannon por Grupo'
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      title: {
+        display: true,
+        text: 'Shannon Index'
+      }
+    }
+  }
+}
+
 
 
 
 function getCount(disease: string) {
   return eval('num' + disease);
 }
+
+const filteredShannonResults = computed(() => {
+  if (selectedGroups.value.length === 0) return shannonResults.value;
+
+  const selectedConditions = diseases
+    .filter(d => selectedGroups.value.includes(d.group))
+    .map(d => d.name);
+
+  return shannonResults.value.filter(item =>
+    selectedConditions.includes(item.diseases)
+  );
+});
+
+
+
+const shannonBoxData = computed(() => ({
+  labels: ['Grupo 1', 'Grupo 2'],
+  datasets: [{
+    label: 'Índice de Shannon',
+    data: [
+      [1.2, 1.5, 1.8, 2.0, 2.3], // grupo 1
+      [1.1, 1.4, 1.6, 1.9, 2.1]  // grupo 2
+    ],
+    backgroundColor: 'rgba(100, 149, 237, 0.5)',
+    borderColor: 'cornflowerblue',
+    borderWidth: 1
+  }]
+}))
+
+
+
+
+
+
 /*
 function updateGroupAssignments() {
   // Cuando el usuario cambia el grupo desde el desplegable, actualizamos los grupos seleccionados si aplica
@@ -256,6 +368,7 @@ function loadData(site: string){
     .then((response) => {
 
       originalItems.value = response.data
+      
       console.log("Datos cargados:", originalItems.value);
       console.log("Ejemplo de dato:", originalItems.value[0]);
 
@@ -269,7 +382,8 @@ function loadData(site: string){
       numRIF.value = countCases('RIF')
       numUNEXPLAINED.value = countCases('UNEXPLAINED')
       updateItems()
-
+      //Llamada al endpoint de Shannon
+      getShannonDiversity(site);
       /*  **No es necesario porque usamos v-model="myList"
       const inputs = document.querySelectorAll('.disease-check');
       inputs.forEach((elem) => {
@@ -281,6 +395,16 @@ function loadData(site: string){
     .catch((error) => {
       console.error('Error:', error)
     })
+}
+//Función para conectar con backend
+async function getShannonDiversity(site: string) {
+  try {
+    const response = await axios.get(`http://localhost:8000/shannon?site=${site}`);
+    shannonResults.value = response.data; // ← Aquí los guardamos
+    console.log("Shannon result:", response.data);
+  } catch (error) {
+    console.error("Error al obtener índice de Shannon:", error);
+  }
 }
 
 // Cuando selecciona un grupo debería marcar automáticamente las condiciones correspondientes
@@ -440,6 +564,17 @@ onMounted(() => {
     })
     //COmprobación
     nextTick(() => {
+      console.log("Boxplot data:", shannonBoxData.value);
+
+    const canvas = document.getElementById('shannonChart') as HTMLCanvasElement;
+    if (canvas) {
+      new Chart(canvas, {
+        type: 'boxplot',
+        data: shannonBoxData.value,
+        
+        options: chartOptions
+      });
+    }
     const checks = document.querySelectorAll('.disease-check') as NodeListOf<HTMLInputElement>;
     checks.forEach(c => {
       console.log("Checkbox ID:", c.id, " Value:", c.value);
