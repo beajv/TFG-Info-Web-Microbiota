@@ -111,6 +111,9 @@
         <p>Here you can visualize and analyze selected data.</p>
       </div>
       <div class="mt-4">
+        <h5 class="mt-4">Boxplot del índice de Shannon por grupo</h5>
+            <canvas id="shannonBoxplotChart" style="max-width: 700px;"></canvas>
+
             <h5>Índice de Shannon por muestra</h5>
             <table class="table table-sm table-striped">
               <thead>
@@ -128,10 +131,26 @@
                 </tr>
               </tbody>
             </table>  
-            <div class="Grafico Shannon">
-              <canvas id="shannonBoxplotChart" style="max-width: 700px;"></canvas>
-
-          </div>
+            <h5 class="mt-4">Resumen por enfermedad</h5>
+              <table class="table table-sm table-bordered">
+                <thead>
+                  <tr>
+                    <th>Enfermedad</th>
+                    <th>Media</th>
+                    <th>Desviación estándar</th>
+                    <th>Num. muestras</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in shannonSummary" :key="row.diseases">
+                    <td>{{ row.diseases }}</td>
+                    <td>{{ row.mean != null ? row.mean.toFixed(4) : '—' }}</td>
+                    <td>{{ row.std != null ? row.std.toFixed(4) : '—' }}</td>
+                    <td>{{ row.count != null ? row.count : '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              
           </div>
           
     </div>
@@ -166,12 +185,43 @@ import { useRoute } from 'vue-router';
               style="max-width: 700px;"
             />
             */
- import { Chart, registerables } from 'chart.js';import 'chartjs-chart-box-and-violin-plot/build/Chart.BoxPlot.js' // Importa el script directamente
+/*
+<h5 class="mt-4">Resumen por enfermedad</h5>
+          <table class="table table-sm table-bordered">
+            <thead>
+              <tr>
+                <th>Enfermedad</th>
+                <th>Media</th>
+                <th>Desviación estándar</th>
+                <th>Num. muestras</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in shannonSummary" :key="row.diseases">
+                <td>{{ row.diseases }}</td>
+                <td>{{ row.mean.toFixed(4) }}</td>
+                <td>{{ row.std.toFixed(4) }}</td>
+                <td>{{ row.count }}</td>
+              </tr>
+            </tbody>
+          </table>
+            <div class="Grafico Shannon">
+              <canvas id="shannonBoxplotChart" style="max-width: 700px;"></canvas>
 
-Chart.register(...registerables);
-console.log("Controladores registrados:", Chart.registry.controllers);
-console.log("Controladores disponibles:", Object.keys(Chart.registry.controllers));
+          </div>
+*/
+import { Chart, registerables } from 'chart.js';
+import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
 
+Chart.register(...registerables, BoxPlotController, BoxAndWiskers);
+console.log("✔️ Controladores disponibles:", Object.keys(Chart.registry.controllers))
+
+
+console.log("Registro completo:", Chart.registry);
+
+console.log("Tipos registrados:", Object.keys(Chart.registry.controllers));
+
+/*
 declare module 'chart.js' {
   interface ChartTypeRegistry {
     boxplot: {
@@ -181,6 +231,7 @@ declare module 'chart.js' {
     };
   }
 }
+*/
 
 
 const route = useRoute();
@@ -226,14 +277,44 @@ const numUNEXPLAINED = ref(0)
 const mother = ref({})
 //Guardar resultados Shannon
 const shannonResults = ref<any[]>([]);
+const shannonSummary = ref<any[]>([]);
 
-  const shannonBoxOptions = {
-  responsive: true,
-  plugins: {
-    legend: { display: false },
-    title: { display: true, text: 'Distribución del Índice de Shannon por Grupo' }
+////************PARA EL BOXPLOT  *************/////
+const shannonBoxData = computed(() => {
+  const group1 = diseases
+    .filter(d => d.group === 1)
+    .map(d => d.name);
+  const group2 = diseases
+    .filter(d => d.group === 2)
+    .map(d => d.name);
+  const group3 = diseases
+    .filter(d => d.group === 3)
+    .map(d => d.name);
+
+  function getShannonForGroup(group: string[]) {
+    return shannonResults.value
+      .filter(r => group.includes(r.diseases))
+      .map(r => r.shannon)
+      .filter(val => typeof val === 'number');
   }
-}
+
+  return {
+    labels: ['Grupo 1', 'Grupo 2', 'Grupo 3'],
+    datasets: [
+      {
+        label: 'Índice de Shannon',
+        data: [
+          getShannonForGroup(group1),
+          getShannonForGroup(group2),
+          getShannonForGroup(group3)
+        ]
+      }
+    ]
+  };
+});
+////************PARA EL BOXPLOT  *************/////
+
+
 const chartOptions = {
   responsive: true,
   plugins: {
@@ -275,24 +356,6 @@ const filteredShannonResults = computed(() => {
 
 
 
-const shannonBoxData = computed(() => ({
-  labels: ['Grupo 1', 'Grupo 2'],
-  datasets: [{
-    label: 'Índice de Shannon',
-    data: [
-      [1.2, 1.5, 1.8, 2.0, 2.3], // grupo 1
-      [1.1, 1.4, 1.6, 1.9, 2.1]  // grupo 2
-    ],
-    backgroundColor: 'rgba(100, 149, 237, 0.5)',
-    borderColor: 'cornflowerblue',
-    borderWidth: 1
-  }]
-}))
-
-
-
-
-
 
 /*
 function updateGroupAssignments() {
@@ -305,41 +368,8 @@ function countCases(site: string) {
   return filtrados.length
 }
 
-function toggleDisease(disease: string) {
-  const index = myList.value.indexOf(disease);
-  if (index === -1) {
-    myList.value.push(disease);
-  } else {
-    myList.value.splice(index, 1);
-  }
-  updateItems();
-}
-/*
-function updateGroupAssignments() {
-  // Actualizamos los grupos seleccionados para reflejar los usados actualmente
-  selectedGroups.value = [...new Set(diseases.value.map(d => d.group).filter(g => g > 0))];
 
-  // Si ya hay un grupo seleccionado, actualizamos myList para reflejar las enfermedades de ese grupo
-  if (selectedGroups.value.length === 1) {
-    const selected = selectedGroups.value[0];
 
-    const selectedDiseases = diseases.value
-      .filter(d => d.group === selected)
-      .map(d => d.name);
-
-    myList.value = [...selectedDiseases];
-
-    // Esto es clave para que los ticks se actualicen visualmente
-    /*nextTick(() => {
-      selectedDiseases.forEach(disease => {
-        const checkbox = document.getElementById('check_' + disease) as HTMLInputElement;
-        if (checkbox) checkbox.checked = true;
-      });
-    });
-
-    updateItems();
-  }
-}*/
 function updateGroupAssignments() {
   if (selectedGroups.value.length === 1) {
     const selected = selectedGroups.value[0];
@@ -400,122 +430,29 @@ function loadData(site: string){
 async function getShannonDiversity(site: string) {
   try {
     const response = await axios.get(`http://localhost:8000/shannon?site=${site}`);
-    shannonResults.value = response.data; // ← Aquí los guardamos
-    console.log("Shannon result:", response.data);
+    shannonResults.value = response.data.resumen_muestra;
+    shannonSummary.value = response.data.resumen_enfermedad;
+    await nextTick()  // Espera a que el DOM esté actualizado
+
+    const ctx = document.getElementById('shannonBoxplotChart') as HTMLCanvasElement
+    if (ctx) {
+      new Chart(ctx, {
+        type: 'boxplot',
+        data: shannonBoxData.value,  // 👈 esto ya lo tienes definido
+        options: chartOptions        // 👈 esto también lo tienes definido
+      })
+    }
+
+
+    console.log("Shannon por muestra:", shannonResults.value);
+    console.log("Resumen por enfermedad:", shannonSummary.value);
   } catch (error) {
     console.error("Error al obtener índice de Shannon:", error);
   }
 }
 
-// Cuando selecciona un grupo debería marcar automáticamente las condiciones correspondientes
-/*
-function toggleGroup(groupNumber: number) {
-  if (selectedGroups.value.includes(groupNumber)) {
-    // Si el grupo ya está seleccionado, lo quitamos
-    selectedGroups.value = selectedGroups.value.filter(g => g !== groupNumber);
-  } else {
-    // Si no está seleccionado, lo agregamos
-    selectedGroups.value.push(groupNumber);
 
-    // Marcar automáticamente las condiciones asociadas al grupo
-    if (groupNumber === 1) {
-      filterDisease('MALE_FACTOR');
-      filterDisease('TUBAL_FACTOR');
-    } else if (groupNumber === 2) {
-      filterDisease('RM');
-      filterDisease('ENDOMETRIOSIS');
-      filterDisease('ENDOMETRITIS');
-      filterDisease('MIOMA');
-      filterDisease('RIF');
-      filterDisease('UNEXPLAINED');
-    }
-  }
-}*/
-/*
-function filterBySelectedGroups() {
-  console.log("Grupos seleccionados:", selectedGroups.value);
 
-  let filteredData = originalItems.value.filter((item) => {
-    if (selectedGroups.value.includes(1) && (item.diseases === "MALE_FACTOR" || item.diseases === "TUBAL_FACTOR")) {
-      return true;
-    }
-    if (selectedGroups.value.includes(2) && ["RM", "ENDOMETRIOSIS", "ENDOMETRITIS", "MIOMA", "RIF", "UNEXPLAINED"].includes(item.diseases)) {
-      return true;
-    }
-    if (selectedGroups.value.includes(3) && !item.diseases) {
-      return true;
-    }
-    return false;
-  });
-
-  console.log("Datos filtrados:", filteredData);
-}*/
-/*
-function handleGroupSelection(event: Event) {
-  const selected = parseInt((event.target as HTMLSelectElement).value);
-  if (!selected) return;
-
-  if (!selectedGroups.value.includes(selected)) {
-    selectedGroups.value.push(selected);
-  }
-
-  if (selected === 1) {
-    filterDisease('MALE_FACTOR');
-    filterDisease('TUBAL_FACTOR');
-  } else if (selected === 2) {
-    filterDisease('RM');
-    filterDisease('ENDOMETRIOSIS');
-    filterDisease('ENDOMETRITIS');
-    filterDisease('MIOMA');
-    filterDisease('RIF');
-    filterDisease('UNEXPLAINED');
-  } else if (selected === 3) {
-    // Este grupo representa sin condición
-    myList.value = myList.value.filter(val =>
-      !['RM', 'MALE_FACTOR', 'TUBAL_FACTOR', 'ENDOMETRIOSIS', 'ENDOMETRITIS', 'MIOMA', 'RIF', 'UNEXPLAINED'].includes(val)
-    );
-    updateItems();
-  }
-}
-
-function handleGroupSelection(event: Event) {
-  const selected = Array.from((event.target as HTMLSelectElement).selectedOptions).map(option =>
-    parseInt(option.value)
-  );
-  selectedGroups.value = selected;
-
-  myList.value = [];
-
-  const diseaseGroups: { [key: number]: string[] } = {
-    1: ['MALE_FACTOR', 'TUBAL_FACTOR'],
-    2: ['RM', 'ENDOMETRIOSIS', 'ENDOMETRITIS', 'MIOMA', 'RIF', 'UNEXPLAINED'],
-  };
-
-  // Reset checkboxes visuales
-  const inputs = document.querySelectorAll('.disease-check') as NodeListOf<HTMLInputElement>;
-  inputs.forEach(elem => (elem.checked = false));
-
-  selectedGroups.value.forEach(group => {
-    if (diseaseGroups[group]) {
-      diseaseGroups[group].forEach(disease => {
-        if (!myList.value.includes(disease)) {
-          myList.value.push(disease);
-
-          const checkbox = document.getElementById('check_' + disease) as HTMLInputElement;
-          if (checkbox) checkbox.checked = true;
-        }
-      });
-    } else if (group === 3) {
-      const known = Object.values(diseaseGroups).flat();
-      const noCondition = originalItems.value.filter(item => !known.includes(item.diseases));
-      const unique = [...new Set(noCondition.map(i => i.diseases))].filter(Boolean);
-      myList.value.push(...unique);
-    }
-  });
-
-  updateItems();
-}
-*/
 function handleGroupSelection(event: Event) {
   const selected = parseInt((event.target as HTMLSelectElement).value);
   if (!selected) return;
@@ -544,10 +481,6 @@ function handleGroupSelection(event: Event) {
     updateItems();
   });
 }
-
-
-
-
 
 
 onMounted(() => {
@@ -580,10 +513,32 @@ onMounted(() => {
       console.log("Checkbox ID:", c.id, " Value:", c.value);
     });
   });
-
+  
 })
 
+////************PARA EL BOXPLOT INI *************/////
 
+import { watch } from 'vue';
+
+watch(shannonBoxData, async (newData) => {
+  await nextTick(); // Espera a que el DOM esté actualizado
+  const canvas = document.getElementById('shannonBoxplotChart') as HTMLCanvasElement;
+
+  if (canvas) {
+    // Destruir el gráfico anterior si existe
+    if (Chart.getChart(canvas)) {
+      Chart.getChart(canvas)?.destroy();
+    }
+
+    new Chart(canvas, {
+      type: 'boxplot',
+      data: newData,
+      options: chartOptions
+    });
+  }
+});
+
+////************PARA EL BOXPLOT  FIN *************/////
 
 function updateItems() {
   items.value = originalItems.value.filter((item) => myList.value.includes(item.diseases))
@@ -592,22 +547,6 @@ function updateItems() {
 
 }
 
-function filterDisease(disease: string) {
-  
-  var index = myList.value.indexOf(disease)
-  console.log(index)
-  if (index == -1) {
-    myList.value.push(disease)
-  } else {
-    myList.value.splice(index, 1)
-  }
-
-  updateItems()
-  const inputs = document.querySelectorAll('.form-check-input');
-  inputs.forEach((elem) => {
-      (elem as HTMLElement).blur()
-  });
-}
 
 
 function check()  {

@@ -16,18 +16,10 @@ from starlette.middleware import Middleware
 #nuevo
 from myapp.routes import analytics
 
+
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
-#nuevo
-app.include_router(analytics.router)
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 origins = [
     "http://5.134.119.124",
     "https://5.134.119.124",
@@ -42,7 +34,6 @@ origins = [
     "http://localhost:8000"
 ]
 
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -50,6 +41,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+#nuevo
+app.include_router(analytics.router)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @app.get("/file/{filename}")
