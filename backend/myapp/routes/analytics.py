@@ -1,3 +1,9 @@
+""""
+    Este archivo define el endpoint `/shannon` que permite calcular el índice de Shannon
+    y generar resúmenes por muestra y por enfermedad para un sitio anatómico específico
+    (vagina, cervix, uterus, rectum, orine).
+"""
+
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 from myapp.services.analytics import calcular_shannon_por_site
@@ -7,22 +13,32 @@ import numpy as np
 
 router = APIRouter()
 
+"""
+    Calcula el índice de diversidad de Shannon para un sitio anatómico específico.
+
+    @param site: Nombre del sitio (tabla en la base de datos). Debe ser uno de:
+                 ['vagina', 'cervix', 'uterus', 'rectum', 'orine']
+    @return JSONResponse: Objeto con:
+        - resumen_muestra: Lista de muestras con su índice de Shannon.
+        - resumen_enfermedad: Estadísticas por condición médica (media, std, n).
+        - En caso de error, código 400 (entrada inválida) o 500 (error de servidor).
+"""
 @router.get("/shannon")
 def calcular_shannon(site: str = Query(...)):
     print("🔍 Entrando al endpoint /shannon con site =", site)
 
     tablas_validas = ["vagina", "cervix", "uterus", "rectum", "orine"]
     if site not in tablas_validas:
-        print("❌ Site no válido:", site)
+        print("Site no válido:", site)
         return JSONResponse(status_code=400, content={"error": "Nombre de tabla no permitido"})
-    print("🧠 ¿Está importado calcular_shannon_por_site?", calcular_shannon_por_site)
+    print("¿Está importado calcular_shannon_por_site?", calcular_shannon_por_site)
 
     try:
-        print("✅ Calculando índice de Shannon...")
+        print("Calculando índice de Shannon...")
         resumen_muestra, resumen_enfermedad = calcular_shannon_por_site(site)
 
-        print("🧪 Resultado muestra (head):", resumen_muestra.head().to_dict())
-        print("🧪 Resultado enfermedad (head):", resumen_enfermedad.head().to_dict())
+        print("Resultado muestra (head):", resumen_muestra.head().to_dict())
+        print("Resultado enfermedad (head):", resumen_enfermedad.head().to_dict())
 
         # Reemplazar NaN, inf, -inf por None (ya tratado)
         def limpiar_dataframe(df):
@@ -55,5 +71,5 @@ def calcular_shannon(site: str = Query(...)):
         )
 
     except Exception as e:
-        print("❌ ERROR en /shannon:", str(e))  # 👈 MUY IMPORTANTE
+        print(" ERROR en /shannon:", str(e))  
         return JSONResponse(status_code=500, content={"error": str(e)})

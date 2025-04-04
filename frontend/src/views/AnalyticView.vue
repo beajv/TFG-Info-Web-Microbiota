@@ -1,3 +1,16 @@
+/**
+ * AnalyticView.vue - Componente Vue 3
+ *
+ * Este componente muestra una interfaz analítica para explorar datos microbiológicos. Incluye:
+ * - Filtros por tipo de muestra (site) y condición médica (disease)
+ * - Visualización de índices de diversidad (Shannon) mediante boxplot
+ * - Tabla de valores por muestra
+ * - Resumen estadístico por condición
+ * - Gráfico de barras apiladas con abundancia relativa por género microbiano
+ *
+ * Se conecta a un backend vía FastAPI para obtener los datos, y utiliza Chart.js + chartjs-chart-boxplot
+ * para las visualizaciones.
+ */
 <template>
   <div class="container-fluid">
     <div class="row flex-nowrap">
@@ -113,6 +126,8 @@
       <div class="mt-4">
         <h5 class="mt-4">Boxplot del índice de Shannon por grupo</h5>
             <canvas id="shannonBoxplotChart" style="max-width: 700px;"></canvas>
+            <h5 class="mt-4">Abundancia relativa por género</h5>
+            <canvas id="abundanciaChart" style="max-width: 900px;"></canvas>
 
             <h5>Índice de Shannon por muestra</h5>
             <table class="table table-sm table-striped">
@@ -172,70 +187,23 @@
 </style>
 
 <script lang="ts" setup>
-import { ref, onMounted, nextTick, reactive, computed} from 'vue'
+
+// Importaciones de librerías
+import { ref, onMounted, nextTick, reactive, computed, watch} from 'vue'
 import axios from 'axios'
 import { useRoute } from 'vue-router';
 
-//Para boxplot
-/*
-<VueChart
-              :type="'boxplot'"
-              :data="shannonBoxData"
-              :options="chartOptions"
-              style="max-width: 700px;"
-            />
-            */
-/*
-<h5 class="mt-4">Resumen por enfermedad</h5>
-          <table class="table table-sm table-bordered">
-            <thead>
-              <tr>
-                <th>Enfermedad</th>
-                <th>Media</th>
-                <th>Desviación estándar</th>
-                <th>Num. muestras</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in shannonSummary" :key="row.diseases">
-                <td>{{ row.diseases }}</td>
-                <td>{{ row.mean.toFixed(4) }}</td>
-                <td>{{ row.std.toFixed(4) }}</td>
-                <td>{{ row.count }}</td>
-              </tr>
-            </tbody>
-          </table>
-            <div class="Grafico Shannon">
-              <canvas id="shannonBoxplotChart" style="max-width: 700px;"></canvas>
-
-          </div>
-*/
+// Chart.js y el plugin de gráficas tipo boxplot
 import { Chart, registerables } from 'chart.js';
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
 
+//Regitro de todos los componentes necesarios para gráficas
 Chart.register(...registerables, BoxPlotController, BoxAndWiskers);
-console.log("✔️ Controladores disponibles:", Object.keys(Chart.registry.controllers))
 
-
-console.log("Registro completo:", Chart.registry);
-
-console.log("Tipos registrados:", Object.keys(Chart.registry.controllers));
-
-/*
-declare module 'chart.js' {
-  interface ChartTypeRegistry {
-    boxplot: {
-      chartOptions: any;
-      datasetOptions: any;
-      defaultDataPoint: number[];
-    };
-  }
-}
-*/
-
-
+// Ruta actual
 const route = useRoute();
 
+// Lista reactiva de enfermedades con su grupo inicializado a 0
 const diseases = reactive([
   { name: 'RM', group: 0 },
   { name: 'MALE_FACTOR', group: 0 },
@@ -247,24 +215,18 @@ const diseases = reactive([
   { name: 'UNEXPLAINED', group: 0 }
 ]);
 
+// Variables para almacenar datos generales y filtrados
 interface Item {
   [key: string]: any;
 }
 
-interface MotherType {
-  [key: string]: any;
-}
-
-
 const selectedGroups = ref<number[]>([]);
-
-
 const items = ref<Item[]>([])
 const originalItems = ref<Item[]>([])
 const myList = ref<string[]>([])
-
 const patiens = ref(0)
 
+// Contadores por enfermedad
 const numRM = ref(0)
 const numMALE_FACTOR = ref(0)
 const numTUBAL_FACTOR = ref(0)
@@ -275,11 +237,14 @@ const numRIF = ref(0)
 const numUNEXPLAINED = ref(0)
 
 const mother = ref({})
-//Guardar resultados Shannon
+
+//Resultados de análisis de diversidad --> Shannon
 const shannonResults = ref<any[]>([]);
 const shannonSummary = ref<any[]>([]);
+const abundanciaData = ref<any[]>([]);
 
 ////************PARA EL BOXPLOT  *************/////
+//Datos computados para construir boxplot por grupo
 const shannonBoxData = computed(() => {
   const group1 = diseases
     .filter(d => d.group === 1)
@@ -312,9 +277,8 @@ const shannonBoxData = computed(() => {
     ]
   };
 });
-////************PARA EL BOXPLOT  *************/////
 
-
+// Opciones para el gráfico
 const chartOptions = {
   responsive: true,
   plugins: {
@@ -335,13 +299,19 @@ const chartOptions = {
   }
 }
 
-
-
-
+/**
+ * @brief Contador reactivo asociado a una enfermedad específica
+ * @param disease Nombre de la enfermedad
+ * @returns Referencia a la variable reactiva que contiene el número de muestras
+ */
 function getCount(disease: string) {
   return eval('num' + disease);
 }
 
+/**
+ * @brief Filtra los resultados del índice de Shannon según los grupos de 
+ *        enfermedades seleccionados
+ */
 const filteredShannonResults = computed(() => {
   if (selectedGroups.value.length === 0) return shannonResults.value;
 
@@ -354,22 +324,20 @@ const filteredShannonResults = computed(() => {
   );
 });
 
-
-
-
-/*
-function updateGroupAssignments() {
-  // Cuando el usuario cambia el grupo desde el desplegable, actualizamos los grupos seleccionados si aplica
-  selectedGroups.value = [...new Set(diseases.value.map(d => d.group).filter(g => g > 0))];
-  updateItems();
-}*/
+/**
+ * @brief Cuenta cuantas muestras estan asociadas a una enfermedad específica
+ * @param site Nombre de la enfermedad
+ * @returns Número de pacientes con dicha enfermedad
+ */
 function countCases(site: string) {
   var filtrados = originalItems.value.filter(item => item.diseases === site) 
   return filtrados.length
 }
 
-
-
+/**
+ * @brief Actualiza la lista de enfermedades seleccionadas según 
+ *      el grupo escogido por el usuario
+ */
 function updateGroupAssignments() {
   if (selectedGroups.value.length === 1) {
     const selected = selectedGroups.value[0];
@@ -381,14 +349,15 @@ function updateGroupAssignments() {
 
     // Actualizar la lista de seleccionados
     myList.value = [...selectedDiseases];
-    console.log("Enfermedades que pertenecen al grupo seleccionado:", selectedDiseases);
-    console.log("Estado de diseases:", JSON.stringify(diseases, null, 2));
-
+    
     updateItems();
   }
 }
 
-
+/**
+ * @brief Carga desde el backend los datos asociados a un sitio 
+ * @param site Nombre del sitio
+ */
 function loadData(site: string){
 
   originalItems.value = []
@@ -399,10 +368,9 @@ function loadData(site: string){
 
       originalItems.value = response.data
       
-      console.log("Datos cargados:", originalItems.value);
-      console.log("Ejemplo de dato:", originalItems.value[0]);
-
       myList.value = ['RM', 'MALE_FACTOR', 'TUBAL_FACTOR', 'ENDOMETRIOSIS', 'ENDOMETRITIS', 'MIOMA', 'RIF', 'UNEXPLAINED'] 
+      
+      //Recuento por enfermedad
       numRM.value = countCases('RM')
       numMALE_FACTOR.value = countCases('MALE_FACTOR')
       numTUBAL_FACTOR.value = countCases('TUBAL_FACTOR')
@@ -411,22 +379,23 @@ function loadData(site: string){
       numMIOMA.value = countCases('MIOMA')
       numRIF.value = countCases('RIF')
       numUNEXPLAINED.value = countCases('UNEXPLAINED')
+
       updateItems()
-      //Llamada al endpoint de Shannon
+
+      //Cálculo de métricas analíticas
       getShannonDiversity(site);
-      /*  **No es necesario porque usamos v-model="myList"
-      const inputs = document.querySelectorAll('.disease-check');
-      inputs.forEach((elem) => {
-           (elem as HTMLInputElement).checked = true
-      });
-      */
+      getAbundanciaData(site);
       
     })
     .catch((error) => {
       console.error('Error:', error)
     })
 }
-//Función para conectar con backend
+
+/**
+ * @brief Obtiene y muestra los resultados del índice de Shannon para un sitio específica
+ * @param site El sitio anatómico a analizar 
+ */
 async function getShannonDiversity(site: string) {
   try {
     const response = await axios.get(`http://localhost:8000/shannon?site=${site}`);
@@ -438,21 +407,112 @@ async function getShannonDiversity(site: string) {
     if (ctx) {
       new Chart(ctx, {
         type: 'boxplot',
-        data: shannonBoxData.value,  // 👈 esto ya lo tienes definido
-        options: chartOptions        // 👈 esto también lo tienes definido
+        data: shannonBoxData.value,  
+        options: chartOptions        
       })
     }
-
-
-    console.log("Shannon por muestra:", shannonResults.value);
-    console.log("Resumen por enfermedad:", shannonSummary.value);
   } catch (error) {
     console.error("Error al obtener índice de Shannon:", error);
   }
 }
 
+/**
+ * @brief Obtiene del backend los datos de abundancia relativa por enfermedad y genera su gráfica
+ * @param site El sitio del cuerpo para el cual se quiere obtener la abundancia
+ */
+async function getAbundanciaData(site: string) {
+  try {
+    const response = await axios.get(`http://localhost:8000/abundancias?site=${site}`);
+    abundanciaData.value = response.data;
+  } catch (error) {
+    console.error("Error al obtener abundancias:", error);
+  }
+  drawAbundanciaChart();
+}
 
 
+/**
+ * @brief Renderiza el gráfico de barras apiladas con la abundancia relativa de los géneros microbianos
+ */
+function drawAbundanciaChart() {
+  const ctx = document.getElementById('abundanciaChart') as HTMLCanvasElement;
+  if (!ctx) return;
+
+  if (Chart.getChart(ctx)) {
+    Chart.getChart(ctx)?.destroy(); // destruye el anterior si existe
+  }
+
+  const enfermedades = abundanciaData.value.map(d => d.diseases);
+  const keys = Object.keys(abundanciaData.value[0]).filter(k => k.startsWith('x'));
+  /*
+  const mapping = {
+  x1: 'Lactobacillus',
+  x2: 'Gardnerella',
+  x3: 'Prevotella',
+  x4: 'Streptococcus',
+  x5: 'Sneathia',
+  x6: 'Porphyromonas',
+  x7: 'Bifidobacterium',
+  x8: 'Atopobium',
+  x9: 'Peptoniphilus',
+  x10: 'Anaerococcus',
+  x11: 'Others',
+  // ... puedes continuar si sabes más
+};*/
+    const colores = [
+    '#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854',
+    '#ffd92f', '#e5c494', '#b3b3b3', '#1f78b4', '#33a02c',
+    '#fb9a99', '#fdbf6f', '#cab2d6', '#6a3d9a', '#b15928',
+    '#a65628', '#f781bf', '#999999', '#d95f02', '#7570b3',
+    '#e7298a', '#66a61e', '#e6ab02', '#a6cee3', '#1b9e77',
+    '#b2df8a', '#fb8072', '#80b1d3', '#fdb462', '#b3de69'
+  ];
+    const datasets = keys.map((k, i) => {
+    return {
+      label: k,
+      data: abundanciaData.value.map(d => d[k]),
+      backgroundColor: colores[i % colores.length],
+      stack: 'stack1'
+    }
+    });
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: enfermedades,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Abundancia relativa por enfermedad'
+        },
+        legend: {
+          position: 'right'
+        }
+      },
+      scales: {
+        x: {
+          stacked: true
+        },
+        y: {
+          stacked: true,
+          title: {
+            display: true,
+            text: 'Abundancia relativa (%)'
+          }
+        }
+      }
+    }
+  });
+}
+
+
+/**
+ * @brief Maneja el cambio de grupo seleccionado desde el menú desplegable
+ * @param event Evento de cambio del elemento '<select>' de grupos
+ */
 function handleGroupSelection(event: Event) {
   const selected = parseInt((event.target as HTMLSelectElement).value);
   if (!selected) return;
@@ -469,9 +529,6 @@ function handleGroupSelection(event: Event) {
 
   nextTick(() => {
     myList.value = [...assigned];
-
-    console.log("myList después de asignar:", myList.value);
-
     // Recorre los checkbox del DOM
     const checkboxes = document.querySelectorAll('.disease-check');
     checkboxes.forEach((c) => {
@@ -482,7 +539,11 @@ function handleGroupSelection(event: Event) {
   });
 }
 
-
+/**
+ * @brief Carga los metadatos de todas las muestras desde el backend,
+ *        llama a 'check()' para seleccionar el sitio en función de la ruta,
+ *      y muestra una gráfica inicial si hay canvas disponible
+ */
 onMounted(() => {
   axios
     .get(import.meta.env.VITE_API_URL + 'all')
@@ -516,10 +577,10 @@ onMounted(() => {
   
 })
 
-////************PARA EL BOXPLOT INI *************/////
-
-import { watch } from 'vue';
-
+/**
+ * @brief Observador reactivo que actualiza el gráfico boxplot cuando cambian los datos Shannon
+ * @param newData Datos actualizados para el gráfico boxplot
+ */
 watch(shannonBoxData, async (newData) => {
   await nextTick(); // Espera a que el DOM esté actualizado
   const canvas = document.getElementById('shannonBoxplotChart') as HTMLCanvasElement;
