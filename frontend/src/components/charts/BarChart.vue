@@ -1,10 +1,99 @@
 <template>
-    <div class="chart-container" @mouseleave="handleChartMouseLeave">
-      <Bar :data="chartData" :options="chartOptions" ref="chart" />
-    </div>
+  <div class="chart-container" @mouseleave="() => labelColors = ['black','black','black','black','black']">
+    <canvas ref="canvas" style="height: 300px;"></canvas>
+  </div>
 </template>
 
-<script>
+<script lang="ts">
+import { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip } from 'chart.js'
+
+export default {
+  name: 'BarChart',
+  mounted() {
+    // Registro de los controladores necesarios para que funcione el gráfico de barras
+    Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip)
+
+    const ctx = (this.$refs.canvas as HTMLCanvasElement).getContext('2d')
+
+    new Chart(ctx!, {
+      type: 'bar',
+      data: {
+        labels: this.chartLabels,
+        datasets: [{
+          label: 'Número de muestras',
+          data: this.chartValues,
+          backgroundColor: this.chartColors,
+          hoverBackgroundColor: this.hoverColors
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            ticks: {
+              color: this.labelColors
+            }
+          },
+          x: {
+            display: false
+          }
+        },
+        onHover: (event, chartElements) => {
+          if (chartElements && chartElements.length) {
+            const index = chartElements[0].index
+            this.handleChartColorLabel(index)
+          }
+        },
+        onClick: (event, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            const routes = ['cervix', 'uterus', 'rectum', 'vagina', 'orine']
+            window.location.href = "/data/" + routes[index]
+          }
+        }
+      }
+    });
+  },
+  data() {
+    return {
+      chartLabels: ['Cervix', 'Uterus', 'Rectum', 'Vagina', 'Urine'],
+      chartValues: [82, 79, 89, 89, 86],
+      chartColors: [
+        'rgba(75, 192, 192, 0.2)',
+        'rgba(75, 192, 192, 0.2)',
+        'rgba(75, 192, 192, 0.2)',
+        'rgba(75, 192, 192, 0.2)',
+        'rgba(75, 192, 192, 0.2)'
+      ],
+      hoverColors: [
+        "rgb(255, 99, 132)",
+        "rgb(255, 99, 132)",
+        "rgb(255, 99, 132)",
+        "rgb(255, 99, 132)",
+        "rgb(255, 99, 132)"
+      ],
+      labelColors: ['black', 'black', 'black', 'black', 'black']
+    }
+  },
+  methods: {
+    handleChartColorLabel(index) {
+      this.labelColors = this.labelColors.map((_, i) => i === index ? 'red' : 'black');
+    }
+  }
+}
+</script>
+
+<style scoped>
+
+.chart-container {
+  width: 100%;
+  height: 200px;
+}
+</style>
+
+/** Script no compatible con la versión usada en analytic
 import { Bar } from 'vue-chartjs'
 import { Chart as ChartJS, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
 
@@ -112,6 +201,6 @@ export default {
             }
     }
   }
-}
-</script>
+}*/
+
 
