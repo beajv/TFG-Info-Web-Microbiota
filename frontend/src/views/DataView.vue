@@ -289,7 +289,7 @@ function calculateValues() {
          var dic = { 
             name: item,
             count: count,
-            countComplete: count + " (" + (count/patiens.value).toFixed(3) + "%)",
+            countComplete: count + " (" + ((count/patiens.value) * 100).toFixed(2) + "%)",
             relative: average + "%, " +  median + "%, " + stdDeviation + "%"
          }
          
