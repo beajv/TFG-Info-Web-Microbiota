@@ -9,7 +9,7 @@ def calcular_shannon_por_site(site: str):
     conn = psycopg2.connect(
         dbname="postgres",
         user="postgres",
-        password="Arturo2019",
+        password="postgres",
         host="localhost",
         port="5432"
     )
@@ -35,7 +35,7 @@ def calcular_abundancias_por_disease(site: str):
     conn = psycopg2.connect(
         dbname="postgres",
         user="postgres",
-        password="Arturo2019",
+        password="postgres",
         host="localhost",
         port="5432"
     )
