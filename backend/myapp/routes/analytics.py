@@ -7,6 +7,7 @@
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 from myapp.services.analytics import calcular_shannon_por_site
+from myapp.services.analytics import calcular_beta_diversity
 
 import pandas as pd
 import numpy as np
@@ -72,4 +73,33 @@ def calcular_shannon(site: str = Query(...)):
 
     except Exception as e:
         print(" ERROR en /shannon:", str(e))  
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+"""
+    Calcula la diversidad beta (distancia de Bray-Curtis) y aplica PCoA para visualización 2D.
+
+    @param site: Nombre del sitio (por ejemplo 'vagina').
+    @return JSONResponse: Lista de objetos con:
+        - sample_id
+        - PC1: Primera coordenada principal
+        - PC2: Segunda coordenada principal
+        - diseases: Enfermedad asociada a cada muestra
+"""
+@router.get("/beta")
+def calcular_beta(site: str = Query(...)):
+    try:
+        tablas_validas = ["vagina", "cervix", "uterus", "rectum", "orine"]
+        if site not in tablas_validas:
+            return JSONResponse(status_code=400, content={"error": "Nombre de tabla no permitido"})
+
+        print(f"🔬 Calculando diversidad beta + PCoA para {site}")
+        resultado = calcular_beta_diversity(site)
+
+        from fastapi.encoders import jsonable_encoder
+        resultado_json = jsonable_encoder(resultado)
+
+        return JSONResponse(content=resultado_json)
+
+    except Exception as e:
+        print("❌ ERROR en /beta:", str(e))
         return JSONResponse(status_code=500, content={"error": str(e)})

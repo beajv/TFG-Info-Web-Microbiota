@@ -128,7 +128,8 @@
             <canvas id="shannonBoxplotChart" style="max-width: 700px;"></canvas>
             <h5 class="mt-4">Abundancia relativa por género</h5>
             <canvas id="abundanciaChart" style="max-width: 900px;"></canvas>
-
+            <h5 class="mt-4">Dispersión PCoA de la diversidad beta</h5>
+            <canvas id="pcoaChart" style="max-width: 800px;"></canvas>
             <h5>Índice de Shannon por muestra</h5>
             <table class="table table-sm table-striped">
               <thead>
@@ -242,6 +243,8 @@ const mother = ref({})
 const shannonResults = ref<any[]>([]);
 const shannonSummary = ref<any[]>([]);
 const abundanciaData = ref<any[]>([]);
+// Beta diversity
+const betaResults = ref<any[]>([]);
 
 ////************PARA EL BOXPLOT  *************/////
 //Datos computados para construir boxplot por grupo
@@ -385,6 +388,7 @@ function loadData(site: string){
       //Cálculo de métricas analíticas
       getShannonDiversity(site);
       getAbundanciaData(site);
+      getBetaDiversity(site);
       
     })
     .catch((error) => {
@@ -428,6 +432,105 @@ async function getAbundanciaData(site: string) {
     console.error("Error al obtener abundancias:", error);
   }
   drawAbundanciaChart();
+}
+
+/**
+ * @brief Obtiene del backend las coordenadas PCoA calculadas a partir
+ *        de la diversidad beta (distancias Bray-Curtis) para un sitio dado
+ * @param site Nombre del sitio anatómico 
+ */
+async function getBetaDiversity(site: string) {
+  try {
+    const response = await axios.get(`http://localhost:8000/beta?site=${site}`);
+    betaResults.value = response.data;
+    await nextTick(); //Para asegurar que este listo antes de dibujar
+    drawPCoAChart();
+  } catch (error) {
+    console.error("Error al obtener datos de diversidad beta:", error);
+  }
+}
+
+/**
+ * @brief Dibuja el gráfico de dispersión (scatterplot) de diversidad beta
+ *        usando las dos primeras componentes principales (PCoA).
+ */
+ function drawPCoAChart() {
+  const canvas = document.getElementById('pcoaChart') as HTMLCanvasElement;
+  if (!canvas) return;
+
+  if (Chart.getChart(canvas)) {
+    Chart.getChart(canvas)?.destroy();
+  }
+
+  const pc1 = betaResults.value["PC1"];
+  const pc2 = betaResults.value["PC2"];
+  const samples = betaResults.value["sample_id"];
+  const diseases = betaResults.value["diseases"];
+
+  // Generar un color diferente por enfermedad
+  const colorPorEnfermedad: { [key: string]: string } = {
+  "RM": '#66c2a5',
+  "MALE_FACTOR": '#fc8d62',
+  "TUBAL_FACTOR": '#8da0cb',
+  "ENDOMETRIOSIS": '#e78ac3',
+  "ENDOMETRITIS": '#a6d854',
+  "MIOMA": '#ffd92f',
+  "RIF": '#e5c494',
+  "UNEXPLAINED": '#b3b3b3' 
+};
+
+
+  const grupos: { [key: string]: any[] } = {};
+
+  // Agrupar puntos por enfermedad
+  Object.keys(pc1).forEach((i) => {
+    const disease = diseases[i];
+    if (!grupos[disease]) grupos[disease] = [];
+    grupos[disease].push({
+      x: pc1[i],
+      y: pc2[i],
+      label: samples[i]
+    });
+  });
+
+  // Crear un dataset por enfermedad
+  const datasets = Object.keys(grupos).map((disease) => ({
+  label: disease,
+  data: grupos[disease],
+  backgroundColor: colorPorEnfermedad[disease] || '#000000', // fallback negro
+  pointRadius: 5,
+  parsing: {
+    xAxisKey: 'x',
+    yAxisKey: 'y'
+  }
+  }));
+
+
+  new Chart(canvas, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(context: any) {
+              const p = context.raw;
+              return `${p.label} (${context.dataset.label})`;
+            }
+          }
+        },
+        title: {
+          display: true,
+          text: 'Distribución PCoA de la Diversidad Beta'
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'PC1' } },
+        y: { title: { display: true, text: 'PC2' } }
+      }
+    }
+  });
 }
 
 
