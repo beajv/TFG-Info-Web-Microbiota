@@ -19,7 +19,7 @@
         <div class="d-flex flex-column align-items-center align-items-sm-start px-3 pt-5 min-vh-100">
           <!-- Site -->
           <ul class="list-group">
-            <li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center">Site</li>
+            <li class="list-group-item custom-header d-flex justify-content-between align-items-center">Site</li>
             <li class="list-group-item align-items-center">
               <input class="form-check-input me-1 inputCervix" type="radio" id="inputCervix" name="radioButton" @click="loadData('cervix')" />
               Cervix<span class="badge badge-pill bg-secondary float-end">82</span>
@@ -45,7 +45,7 @@
           <!-- Group Selector -->
           <br />
           <ul class="list-group">
-            <li class="list-group-item list-group-item-dark">
+            <li class="list-group-item custom-header">
               <label for="groupSelector">Groups</label>
               <select class="form-select mt-2" id="groupSelector" @change="handleGroupSelection($event)">
                 <option value="">-- Select group --</option>
@@ -59,7 +59,7 @@
           <!-- Conditions -->
           <br />
           <ul class="list-group">
-            <li class="list-group-item list-group-item-dark">Condition</li>
+            <li class="list-group-item custom-header">Condition</li>
             <li class="list-group-item d-flex justify-content-between flex-wrap align-items-center" v-for="disease in diseases" :key="disease.name">
               <div class="d-flex align-items-center flex-wrap overflow-hidden">
                 <input class="form-check-input me-1 disease-check" :id="'check_' + disease.name" type="checkbox" :value="disease.name" v-model="myList" />
@@ -148,6 +148,11 @@
 .page-link:focus {
     box-shadow: none !important;
     border-color: transparent !important;
+}
+.custom-header {
+  background-color: #4e73df; 
+  color: white;
+  font-weight: bold;
 }
 
 .chart-canvas {
