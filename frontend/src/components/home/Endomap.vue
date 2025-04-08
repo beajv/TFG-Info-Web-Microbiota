@@ -251,7 +251,7 @@ const resaltarParte = (event: MouseEvent) => {
 <style>
 #svg-container {
   position: absolute;
-  left: 600px; /* Misma posición que antes */
+  left: 500px; /* Misma posición que antes */
   top: 150px;
   width: 1000px;  /* Ajusta al tamaño deseado */
   height: 1000px;

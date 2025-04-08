@@ -63,7 +63,7 @@ import Endomap from '../components/home/Endomap.vue'
 
 .background-image {
   background: url('../assets/fondo.png');
-  width: 1920px;
+  width: 1425px;
   height: 600px; /* Altura de la página en píxeles */
   background-repeat: repeat-x;
   background-size: cover;
@@ -73,27 +73,29 @@ import Endomap from '../components/home/Endomap.vue'
   width: 200px;
   height: 200px;
   position: absolute;
-  left: 100px;
-  top: 310px;
+  left: 90px;
+  top: 320px;
 }
 
 .contenedor2 {
+  
 }
 
 .contenedor3 {
   width: 400px;
   height: 600px;
   position: absolute;
-  left: 1200px;
-  top: 330px;
+  left: 1000px;
+  top: 340px;
 }
 
 .contenedor4 {
-  width: 950px;
-  height: 100px;
+  width: 850px;
+  height: 95px;
   position: absolute;
-  left: 380px;
-  top: 680px;
+  left: 300px;
+  top: 660px;
+  bottom: 10px;
 }
 
 </style>

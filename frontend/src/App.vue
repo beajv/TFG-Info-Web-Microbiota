@@ -32,7 +32,7 @@
 <style>
 .navbar {
   background-color: #f1fdff !important;
-  width: 1920px;
+  width: 100vw;
   padding-left: 20px;
 }
 </style>

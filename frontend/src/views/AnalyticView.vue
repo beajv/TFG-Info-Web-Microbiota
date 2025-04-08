@@ -11,104 +11,62 @@
  * Se conecta a un backend vía FastAPI para obtener los datos, y utiliza Chart.js + chartjs-chart-boxplot
  * para las visualizaciones.
  */
-<template>
+ <template>
   <div class="container-fluid">
     <div class="row flex-nowrap">
-      <div class="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-light">
+      <!-- Panel lateral -->
+      <div class="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-light sidebar-fixed">
         <div class="d-flex flex-column align-items-center align-items-sm-start px-3 pt-5 min-vh-100">
+          <!-- Site -->
           <ul class="list-group">
-            <li
-                class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center"
-                >
-                Site
+            <li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center">Site</li>
+            <li class="list-group-item align-items-center">
+              <input class="form-check-input me-1 inputCervix" type="radio" id="inputCervix" name="radioButton" @click="loadData('cervix')" />
+              Cervix<span class="badge badge-pill bg-secondary float-end">82</span>
             </li>
-              <li class="list-group-item align-items-center">
-                <input
-                    class="form-check-input me-1 inputCervix"
-                    type="radio"
-                    id="inputCervix"
-                    name="radioButton"
-                    @click="loadData('cervix')"
-                    />
-                Cervix<span class="badge badge-pill bg-secondary float-end"> 82 </span>
-              </li>
-              <li class="list-group-item align-items-center">
-                <input
-                    class="form-check-input me-1 inputUterus"
-                    type="radio"
-                    id="inputUterus"
-                    name="radioButton"
-                    @click="loadData('uterus')"
-                    />
-                Uterus<span class="badge badge-pill bg-secondary float-end"> 79 </span>
-
-              </li>
-              <li class="list-group-item align-items-center">
-                <input
-                    class="form-check-input me-1 inputRectum"
-                    type="radio"
-                    id="inputRectum"
-                    name="radioButton"
-                    @click="loadData('rectum')"
-                    />
-                Rectum<span class="badge badge-pill bg-secondary float-end"> 89 </span>
-
-              </li>
-              <li class="list-group-item align-items-center">
-                <input
-                    class="form-check-input me-1 inputVagina"
-                    type="radio"
-                    id="inputVagina"
-                    name="radioButton"
-                    @click="loadData('vagina')"
-                    />
-                Vagina<span class="badge badge-pill bg-secondary float-end"> 89 </span>
-
-              </li>
-              <li class="list-group-item align-items-center">
-                <input
-                    class="form-check-input me-1 inputOrine"
-                    type="radio"
-                    id="inputOrine"
-                    name="radioButton"
-                    @click="loadData('orine')"
-                    />
-                Urine<span class="badge badge-pill bg-secondary float-end"> 86 </span>
-
-              </li>
+            <li class="list-group-item align-items-center">
+              <input class="form-check-input me-1 inputUterus" type="radio" id="inputUterus" name="radioButton" @click="loadData('uterus')" />
+              Uterus<span class="badge badge-pill bg-secondary float-end">79</span>
+            </li>
+            <li class="list-group-item align-items-center">
+              <input class="form-check-input me-1 inputRectum" type="radio" id="inputRectum" name="radioButton" @click="loadData('rectum')" />
+              Rectum<span class="badge badge-pill bg-secondary float-end">89</span>
+            </li>
+            <li class="list-group-item align-items-center">
+              <input class="form-check-input me-1 inputVagina" type="radio" id="inputVagina" name="radioButton" @click="loadData('vagina')" />
+              Vagina<span class="badge badge-pill bg-secondary float-end">89</span>
+            </li>
+            <li class="list-group-item align-items-center">
+              <input class="form-check-input me-1 inputOrine" type="radio" id="inputOrine" name="radioButton" @click="loadData('orine')" />
+              Urine<span class="badge badge-pill bg-secondary float-end">86</span>
+            </li>
           </ul>
+
+          <!-- Group Selector -->
           <br />
           <ul class="list-group">
             <li class="list-group-item list-group-item-dark">
               <label for="groupSelector">Groups</label>
               <select class="form-select mt-2" id="groupSelector" @change="handleGroupSelection($event)">
-                
                 <option value="">-- Select group --</option>
                 <option value="1">Grupo 1</option>
                 <option value="2">Grupo 2</option>
                 <option value="3">Grupo 3</option>
               </select>
-
             </li>
           </ul>
-          <br />
-          
+
+          <!-- Conditions -->
           <br />
           <ul class="list-group">
             <li class="list-group-item list-group-item-dark">Condition</li>
             <li class="list-group-item d-flex justify-content-between flex-wrap align-items-center" v-for="disease in diseases" :key="disease.name">
               <div class="d-flex align-items-center flex-wrap overflow-hidden">
-                <input
-                  class="form-check-input me-1 disease-check"
-                  :id="'check_' + disease.name"
-                  type="checkbox"
-                  :value="disease.name"
-                  v-model="myList"
-                />
+                <input class="form-check-input me-1 disease-check" :id="'check_' + disease.name" type="checkbox" :value="disease.name" v-model="myList" />
                 {{ disease.name }}
                 <span class="badge badge-pill bg-secondary ms-2">{{ getCount(disease.name) }}</span>
               </div>
-              <select class="form-select form-select-sm w-auto "  v-model.number="disease.group" @change="updateGroupAssignments">
+              <select class="form-select form-select-sm w-auto" v-model.number="disease.group" @change="updateGroupAssignments">
                 <option value="0">Sin grupo</option>
                 <option value="1">Grupo 1</option>
                 <option value="2">Grupo 2</option>
@@ -118,60 +76,69 @@
           </ul>
         </div>
       </div>
-    <!-- Contenido Principal -->
-    <div class="col py-3">
-        <h3>Analytics Section</h3>
-        <p>Here you can visualize and analyze selected data.</p>
+
+      <!-- Contenido Principal -->
+      <div class="col py-3">
+        <!-- Header y descripción -->
+        <div class="section-header text-center mb-4">
+          <h3 class="fs-3">Analytics Section</h3>
+          <p class="fs-6 text-muted">Here you can visualize and analyze selected data.</p>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="mt-4">
+          <h5 class="mt-4">Boxplot del índice de Shannon por grupo</h5>
+          <canvas id="shannonBoxplotChart" class="chart-canvas" style="max-width: 500px; max-height: 400px;"></canvas>
+
+          <h5 class="mt-4">Abundancia relativa por género</h5>
+          <canvas id="abundanciaChart" class="chart-canvas" style="max-width: 800px; max-height: 500px;"></canvas>
+
+          <h5 class="mt-4">Dispersión PCoA de la diversidad beta</h5>
+          <canvas id="pcoaChart" class="chart-canvas" style="max-width: 800px; max-height: 500px;"></canvas>
+
+          <h5>Índice de Shannon por muestra</h5>
+          <table class="table table-sm table-striped">
+            <thead>
+              <tr>
+                <th>Muestra</th>
+                <th>Condition</th>
+                <th>Shannon</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in filteredShannonResults" :key="row.sample_id">
+                <td>{{ row.sample_id }}</td>
+                <td>{{ row.diseases }}</td>
+                <td>{{ row.shannon.toFixed(4) }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h5 class="mt-4">Resumen por enfermedad</h5>
+          <table class="table table-sm table-bordered">
+            <thead>
+              <tr>
+                <th>Enfermedad</th>
+                <th>Media</th>
+                <th>Desviación estándar</th>
+                <th>Num. muestras</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in shannonSummary" :key="row.diseases">
+                <td>{{ row.diseases }}</td>
+                <td>{{ row.mean != null ? row.mean.toFixed(4) : '—' }}</td>
+                <td>{{ row.std != null ? row.std.toFixed(4) : '—' }}</td>
+                <td>{{ row.count != null ? row.count : '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-      <div class="mt-4">
-        <h5 class="mt-4">Boxplot del índice de Shannon por grupo</h5>
-            <canvas id="shannonBoxplotChart" style="max-width: 700px;"></canvas>
-            <h5 class="mt-4">Abundancia relativa por género</h5>
-            <canvas id="abundanciaChart" style="max-width: 900px;"></canvas>
-            <h5 class="mt-4">Dispersión PCoA de la diversidad beta</h5>
-            <canvas id="pcoaChart" style="max-width: 800px;"></canvas>
-            <h5>Índice de Shannon por muestra</h5>
-            <table class="table table-sm table-striped">
-              <thead>
-                <tr>
-                  <th>Muestra</th>
-                  <th>Condition</th>
-                  <th>Shannon</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in filteredShannonResults" :key="row.sample_id">
-                  <td>{{ row.sample_id }}</td>
-                  <td>{{ row.diseases }}</td>
-                  <td>{{ row.shannon.toFixed(4) }}</td>
-                </tr>
-              </tbody>
-            </table>  
-            <h5 class="mt-4">Resumen por enfermedad</h5>
-              <table class="table table-sm table-bordered">
-                <thead>
-                  <tr>
-                    <th>Enfermedad</th>
-                    <th>Media</th>
-                    <th>Desviación estándar</th>
-                    <th>Num. muestras</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in shannonSummary" :key="row.diseases">
-                    <td>{{ row.diseases }}</td>
-                    <td>{{ row.mean != null ? row.mean.toFixed(4) : '—' }}</td>
-                    <td>{{ row.std != null ? row.std.toFixed(4) : '—' }}</td>
-                    <td>{{ row.count != null ? row.count : '—' }}</td>
-                  </tr>
-                </tbody>
-              </table>
-              
-          </div>
-          
     </div>
   </div>
 </template>
+
 
 <style>
 .list-group {
@@ -183,6 +150,26 @@
     border-color: transparent !important;
 }
 
+.chart-canvas {
+  width: 100% !important;
+  height: auto !important;
+  max-width: 800px;
+  margin-bottom: 2rem;
+}
+
+/* Sidebar siempre estrecha, incluso en pantallas medianas */
+.sidebar-fixed {
+  width: auto;
+  max-width: 250px;
+  min-width: 180px;
+  flex-shrink: 0;
+}
+
+
+/* Asegura que el contenido principal puede crecer */
+.col {
+  flex: 1;
+}
 
 
 </style>
