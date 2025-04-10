@@ -47,11 +47,11 @@
           <ul class="list-group">
             <li class="list-group-item custom-header">
               <label for="groupSelector">Groups</label>
-              <select class="form-select mt-2" id="groupSelector" @change="handleGroupSelection($event)">
-                <option value="">-- Select group --</option>
-                <option value="1">Grupo 1</option>
-                <option value="2">Grupo 2</option>
-                <option value="3">Grupo 3</option>
+              <select class="form-select mt-2" id="groupSelector" v-model.number="numGrupos">
+                <option value="0">-- No groups --</option>
+                <option value="2">2 groups</option>
+                <option value="3">3 groups</option>
+                <option value="4">4 groups</option>
               </select>
             </li>
           </ul>
@@ -66,12 +66,11 @@
                 {{ disease.name }}
                 <span class="badge badge-pill bg-secondary ms-2">{{ getCount(disease.name) }}</span>
               </div>
-              <select class="form-select form-select-sm w-auto" v-model.number="disease.group" @change="updateGroupAssignments">
+              <select class="form-select form-select-sm w-auto" v-model.number="disease.group" @change="updateItems">
                 <option value="0">Sin grupo</option>
-                <option value="1">Grupo 1</option>
-                <option value="2">Grupo 2</option>
-                <option value="3">Grupo 3</option>
+                <option v-for="n in numGrupos" :key="n" :value="n">Grupo {{ n }}</option>
               </select>
+
             </li>
           </ul>
         </div>
@@ -87,14 +86,36 @@
 
         <!-- Gráficos -->
         <div class="mt-4">
-          <h5 class="mt-4">Boxplot del índice de Shannon por grupo</h5>
-          <canvas id="shannonBoxplotChart" class="chart-canvas" style="max-width: 500px; max-height: 400px;"></canvas>
+          
+          <div class="d-flex flex-wrap justify-content-center align-items-start mt-4 gap-5">
+          <div class="text-center">
+            <h5>Abundancia relativa por género (por enfermedad)</h5>
+            <canvas id="abundanciaChart" class="chart-canvas-large" width="800" height="600"></canvas>
+          </div>
+          <div class="text-center">
+            <h5>Abundancia relativa por género (por grupo)</h5>
+            <canvas id="abundanciaChartFiltrado" class="chart-canvas-large" width="800" height="500"></canvas>
+          </div>
+        </div>
 
-          <h5 class="mt-4">Abundancia relativa por género</h5>
-          <canvas id="abundanciaChart" class="chart-canvas" style="max-width: 800px; max-height: 500px;"></canvas>
 
-          <h5 class="mt-4">Dispersión PCoA de la diversidad beta</h5>
-          <canvas id="pcoaChart" class="chart-canvas" style="max-width: 800px; max-height: 500px;"></canvas>
+
+        <div class="d-flex flex-wrap justify-content-center align-items-start gap-5 mt-4">
+          <div class="text-center">
+            <h5>Dispersión PCoA por enfermedad</h5>
+            <canvas id="pcoaChart" class="chart-canvas-large" style="max-width: 1000px; max-height: 500px;"></canvas>
+          </div>
+          <div class="text-center">
+            <h5>Dispersión PCoA por grupo</h5>
+            <canvas id="pcoaChartPorGrupo" class="chart-canvas-large" style="max-width: 1000px; max-height: 500px;"></canvas>
+          </div>
+        </div>
+
+
+        <div class="text-center">
+          <h5>Violinplot del índice de Shannon por grupo</h5>
+          <canvas id="shannonViolinplotChart" class="chart-canvas-large" width="700" height="400"></canvas>
+        </div>
 
           <h5>Índice de Shannon por muestra</h5>
           <table class="table table-sm table-striped">
@@ -176,6 +197,16 @@
   flex: 1;
 }
 
+.chart-canvas-large {
+  display: block;
+  max-width: 800px;
+  max-height: 1000px;
+  width:700px !important;
+  height: 400px !important;
+  margin: 0 auto 2rem;
+}
+
+
 
 </style>
 
@@ -188,10 +219,10 @@ import { useRoute } from 'vue-router';
 
 // Chart.js y el plugin de gráficas tipo boxplot
 import { Chart, registerables } from 'chart.js';
-import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
+import { BoxPlotController, BoxAndWiskers , ViolinController, Violin} from '@sgratzl/chartjs-chart-boxplot';
 
 //Regitro de todos los componentes necesarios para gráficas
-Chart.register(...registerables, BoxPlotController, BoxAndWiskers);
+Chart.register(...registerables, BoxPlotController, BoxAndWiskers, ViolinController, Violin);
 
 // Ruta actual
 const route = useRoute();
@@ -213,7 +244,7 @@ interface Item {
   [key: string]: any;
 }
 
-const selectedGroups = ref<number[]>([]);
+
 const items = ref<Item[]>([])
 const originalItems = ref<Item[]>([])
 const myList = ref<string[]>([])
@@ -228,6 +259,8 @@ const numENDOMETRITIS = ref(0)
 const numMIOMA = ref(0)
 const numRIF = ref(0)
 const numUNEXPLAINED = ref(0)
+//Numero de grupos
+const numGrupos = ref(0)
 
 const mother = ref({})
 
@@ -238,40 +271,37 @@ const abundanciaData = ref<any[]>([]);
 // Beta diversity
 const betaResults = ref<any[]>([]);
 
-////************PARA EL BOXPLOT  *************/////
-//Datos computados para construir boxplot por grupo
-const shannonBoxData = computed(() => {
-  const group1 = diseases
-    .filter(d => d.group === 1)
-    .map(d => d.name);
-  const group2 = diseases
-    .filter(d => d.group === 2)
-    .map(d => d.name);
-  const group3 = diseases
-    .filter(d => d.group === 3)
-    .map(d => d.name);
+//Colores
+const colores = [
+  '#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854',
+  '#ffd92f', '#e5c494', '#b3b3b3', '#1f78b4', '#33a02c',
+  '#fb9a99', '#fdbf6f', '#cab2d6', '#6a3d9a', '#b15928',
+  '#a65628', '#f781bf', '#999999', '#d95f02', '#7570b3',
+  '#e7298a', '#66a61e', '#e6ab02', '#a6cee3', '#1b9e77',
+  '#b2df8a', '#fb8072', '#80b1d3', '#fdb462', '#b3de69'
+];
 
-  function getShannonForGroup(group: string[]) {
-    return shannonResults.value
-      .filter(r => group.includes(r.diseases))
-      .map(r => r.shannon)
-      .filter(val => typeof val === 'number');
+//Datos computados para construir boxplot por grupo
+const shannonViolinData = computed(() => {
+  const groups: { [key: number]: string[] } = {};
+  for (let i = 1; i <= numGrupos.value; i++) {
+    groups[i] = diseases.filter(d => d.group === i).map(d => d.name);
   }
 
+  const getShannonForGroup = (group: string[]) =>
+    shannonResults.value.filter(r => group.includes(r.diseases)).map(r => r.shannon).filter(val => typeof val === 'number');
+
   return {
-    labels: ['Grupo 1', 'Grupo 2', 'Grupo 3'],
+    labels: Object.keys(groups).map(g => `Grupo ${g}`),
     datasets: [
       {
         label: 'Índice de Shannon',
-        data: [
-          getShannonForGroup(group1),
-          getShannonForGroup(group2),
-          getShannonForGroup(group3)
-        ]
+        data: Object.values(groups).map(g => getShannonForGroup(g))
       }
     ]
   };
 });
+
 
 // Opciones para el gráfico
 const chartOptions = {
@@ -307,17 +337,18 @@ function getCount(disease: string) {
  * @brief Filtra los resultados del índice de Shannon según los grupos de 
  *        enfermedades seleccionados
  */
-const filteredShannonResults = computed(() => {
-  if (selectedGroups.value.length === 0) return shannonResults.value;
+ const filteredShannonResults = computed(() => {
+  if (numGrupos.value === 0) return shannonResults.value;
 
-  const selectedConditions = diseases
-    .filter(d => selectedGroups.value.includes(d.group))
+  const assignedConditions = diseases
+    .filter(d => d.group > 0 && myList.value.includes(d.name))
     .map(d => d.name);
 
   return shannonResults.value.filter(item =>
-    selectedConditions.includes(item.diseases)
+    assignedConditions.includes(item.diseases)
   );
 });
+
 
 /**
  * @brief Cuenta cuantas muestras estan asociadas a una enfermedad específica
@@ -329,25 +360,7 @@ function countCases(site: string) {
   return filtrados.length
 }
 
-/**
- * @brief Actualiza la lista de enfermedades seleccionadas según 
- *      el grupo escogido por el usuario
- */
-function updateGroupAssignments() {
-  if (selectedGroups.value.length === 1) {
-    const selected = selectedGroups.value[0];
 
-    // Recalcular qué enfermedades pertenecen a ese grupo
-    const selectedDiseases = diseases
-      .filter(d => d.group === selected)
-      .map(d => d.name);
-
-    // Actualizar la lista de seleccionados
-    myList.value = [...selectedDiseases];
-    
-    updateItems();
-  }
-}
 
 /**
  * @brief Carga desde el backend los datos asociados a un sitio 
@@ -399,14 +412,18 @@ async function getShannonDiversity(site: string) {
     shannonSummary.value = response.data.resumen_enfermedad;
     await nextTick()  // Espera a que el DOM esté actualizado
 
-    const ctx = document.getElementById('shannonBoxplotChart') as HTMLCanvasElement
+    const ctx = document.getElementById('shannonViolinplotChart') as HTMLCanvasElement
     if (ctx) {
+      const oldChart = Chart.getChart(ctx);
+      if (oldChart) oldChart.destroy();
+
       new Chart(ctx, {
-        type: 'boxplot',
-        data: shannonBoxData.value,  
+        type: 'violin',
+        data: shannonViolinData.value,  
         options: chartOptions        
-      })
+      });
     }
+
   } catch (error) {
     console.error("Error al obtener índice de Shannon:", error);
   }
@@ -423,7 +440,18 @@ async function getAbundanciaData(site: string) {
   } catch (error) {
     console.error("Error al obtener abundancias:", error);
   }
+
+  await nextTick();
   drawAbundanciaChart();
+  if (numGrupos.value > 0) {
+    await nextTick();
+    drawAbundanciaPorGrupoChartFiltrado();
+  }
+
+  /*
+  if (numGrupos.value > 0) {
+    drawAbundanciaGroupChart();
+  }*/
 }
 
 /**
@@ -437,6 +465,11 @@ async function getBetaDiversity(site: string) {
     betaResults.value = response.data;
     await nextTick(); //Para asegurar que este listo antes de dibujar
     drawPCoAChart();
+    if (numGrupos.value > 0) {
+      await nextTick();
+      drawPCoAChartPorGrupo();
+    }
+
   } catch (error) {
     console.error("Error al obtener datos de diversidad beta:", error);
   }
@@ -468,7 +501,8 @@ async function getBetaDiversity(site: string) {
   "ENDOMETRITIS": '#a6d854',
   "MIOMA": '#ffd92f',
   "RIF": '#e5c494',
-  "UNEXPLAINED": '#b3b3b3' 
+  "UNEXPLAINED": '#b3b3b3',
+  "SOP": '#4e73df'
 };
 
 
@@ -476,14 +510,17 @@ async function getBetaDiversity(site: string) {
 
   // Agrupar puntos por enfermedad
   Object.keys(pc1).forEach((i) => {
-    const disease = diseases[i];
-    if (!grupos[disease]) grupos[disease] = [];
-    grupos[disease].push({
-      x: pc1[i],
-      y: pc2[i],
-      label: samples[i]
-    });
+  const disease = diseases[i];
+  if (!myList.value.includes(disease)) return; // Filtra SOP y ARTERIOVENOUS_MALFORMATION
+
+  if (!grupos[disease]) grupos[disease] = [];
+  grupos[disease].push({
+    x: pc1[i],
+    y: pc2[i],
+    label: samples[i]
   });
+});
+
 
   // Crear un dataset por enfermedad
   const datasets = Object.keys(grupos).map((disease) => ({
@@ -524,6 +561,78 @@ async function getBetaDiversity(site: string) {
     }
   });
 }
+//Lo mismo por grupos
+function drawPCoAChartPorGrupo() {
+  const canvas = document.getElementById('pcoaChartPorGrupo') as HTMLCanvasElement;
+  if (!canvas || numGrupos.value === 0) return;
+
+  if (Chart.getChart(canvas)) {
+    Chart.getChart(canvas)?.destroy();
+  }
+
+  const pc1 = betaResults.value["PC1"];
+  const pc2 = betaResults.value["PC2"];
+  const samples = betaResults.value["sample_id"];
+  const enfermedades = betaResults.value["diseases"];
+
+  // Mapeo de enfermedad a grupo
+  const enfermedadAGrupo: Record<string, number> = {};
+  diseases.forEach(d => {
+    if (d.group > 0) enfermedadAGrupo[d.name] = d.group;
+  });
+
+  const grupos: Record<number, any[]> = {};
+  Object.keys(pc1).forEach(i => {
+    const enfermedad = enfermedades[i];
+    const grupo = enfermedadAGrupo[enfermedad];
+
+    if (grupo && myList.value.includes(enfermedad)) {
+      if (!grupos[grupo]) grupos[grupo] = [];
+      grupos[grupo].push({
+        x: pc1[i],
+        y: pc2[i],
+        label: samples[i]
+      });
+    }
+  });
+
+  const datasets = Object.keys(grupos).map((g, i) => ({
+    label: `Grupo ${g}`,
+    data: grupos[Number(g)],
+    backgroundColor: colores[i % colores.length],
+    pointRadius: 5,
+    parsing: {
+      xAxisKey: 'x',
+      yAxisKey: 'y'
+    }
+  }));
+
+  new Chart(canvas, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'PCoA de diversidad beta por grupo'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context: any) {
+              const p = context.raw;
+              return `${p.label} (${context.dataset.label})`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'PC1' } },
+        y: { title: { display: true, text: 'PC2' } }
+      }
+    }
+  });
+}
 
 
 /**
@@ -533,58 +642,74 @@ function drawAbundanciaChart() {
   const ctx = document.getElementById('abundanciaChart') as HTMLCanvasElement;
   if (!ctx) return;
 
-  if (Chart.getChart(ctx)) {
-    Chart.getChart(ctx)?.destroy(); // destruye el anterior si existe
-  }
+  // Destruimos el gráfico anterior si existe
+  const oldChart = Chart.getChart(ctx);
+  if (oldChart) oldChart.destroy();
 
-  const enfermedades = abundanciaData.value.map(d => d.diseases);
+  //const enfermedades = abundanciaData.value.map(d => d.diseases);
+  const enfermedades = abundanciaData.value
+  .filter(d => myList.value.includes(d.diseases)) // 👈 Filtra aquí
+  .map(d => d.diseases);
+
   const keys = Object.keys(abundanciaData.value[0]).filter(k => k.startsWith('x'));
+
+  // Suma total por género
+  const totalAbundancias: Record<string, number> = {};
+  keys.forEach(k => {
+    totalAbundancias[k] = abundanciaData.value.reduce((sum, row) => sum + (row[k] || 0), 0);
+  });
+
+  const totalMuestras = abundanciaData.value.length;
+
+  // Filtramos los géneros con abundancia media global ≥ 3%
   /*
-  const mapping = {
-  x1: 'Lactobacillus',
-  x2: 'Gardnerella',
-  x3: 'Prevotella',
-  x4: 'Streptococcus',
-  x5: 'Sneathia',
-  x6: 'Porphyromonas',
-  x7: 'Bifidobacterium',
-  x8: 'Atopobium',
-  x9: 'Peptoniphilus',
-  x10: 'Anaerococcus',
-  x11: 'Others',
-  // ... puedes continuar si sabes más
-};*/
-    const colores = [
-    '#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854',
-    '#ffd92f', '#e5c494', '#b3b3b3', '#1f78b4', '#33a02c',
-    '#fb9a99', '#fdbf6f', '#cab2d6', '#6a3d9a', '#b15928',
-    '#a65628', '#f781bf', '#999999', '#d95f02', '#7570b3',
-    '#e7298a', '#66a61e', '#e6ab02', '#a6cee3', '#1b9e77',
-    '#b2df8a', '#fb8072', '#80b1d3', '#fdb462', '#b3de69'
-  ];
-    const datasets = keys.map((k, i) => {
-    return {
-      label: k,
-      data: abundanciaData.value.map(d => d[k]),
-      backgroundColor: colores[i % colores.length],
-      stack: 'stack1'
-    }
-    });
+  const topKeys = keys.filter(k => (totalAbundancias[k] / totalMuestras) >= 3);
+  const otherKeys = keys.filter(k => !topKeys.includes(k));
+  */
+  //Filtrar 30% de más abundantes
+  
+  const sortedKeys = keys.sort((a, b) => totalAbundancias[b] - totalAbundancias[a]);
+  const topN = Math.ceil(keys.length * 0.3);
+  const topKeys = sortedKeys.slice(0, topN);
+  const otherKeys = sortedKeys.slice(topN);
+  
+  // Dataset de los top
+  const datasets = topKeys.map((k, i) => ({
+    label: k,
+    //data: abundanciaData.value.map(d => d[k]),
+    data: abundanciaData.value.filter(d => myList.value.includes(d.diseases)).map(d => d[k]),
+    backgroundColor: colores[i % colores.length],
+    stack: 'stack1'
+  }));
+
+  // Dataset de "otros"
+  //const otros = abundanciaData.value.map(d =>otherKeys.reduce((sum, k) => sum + (d[k] || 0), 0));
+  const otros = abundanciaData.value
+  .filter(d => myList.value.includes(d.diseases)) // 👈 aquí también
+  .map(d => otherKeys.reduce((sum, k) => sum + (d[k] || 0), 0));
+
+  datasets.push({
+    label: 'Otros',
+    data: otros,
+    backgroundColor: '#999999',
+    stack: 'stack1'
+  });
+
   new Chart(ctx, {
     type: 'bar',
     data: {
       labels: enfermedades,
-      datasets: datasets
+      datasets
     },
     options: {
       responsive: true,
       plugins: {
         title: {
           display: true,
-          text: 'Abundancia relativa por enfermedad'
+          text: 'Abundancia relativa por enfermedad (filtrada ≥3%)'
         },
         legend: {
-          position: 'right'
+          position: 'bottom'
         }
       },
       scales: {
@@ -603,11 +728,127 @@ function drawAbundanciaChart() {
   });
 }
 
+//
+function drawAbundanciaPorGrupoChartFiltrado() {
+  const canvas = document.getElementById('abundanciaChartFiltrado') as HTMLCanvasElement;
+  if (!canvas || numGrupos.value === 0) return;
+
+  // Destruimos el gráfico anterior si existe
+  const oldChart = Chart.getChart(canvas);
+  if (oldChart) oldChart.destroy();
+
+  // Agrupamos enfermedades por grupo
+  const groupMapping: Record<number, string[]> = {};
+  for (let i = 1; i <= numGrupos.value; i++) {
+    groupMapping[i] = diseases.filter(d => d.group === i).map(d => d.name);
+  }
+
+  // Agrupamos muestras por grupo
+  const samplesByGroup: Record<number, any[]> = {};
+  for (let i = 1; i <= numGrupos.value; i++) {
+    samplesByGroup[i] = abundanciaData.value.filter(d => groupMapping[i].includes(d.diseases));
+  }
+
+  // Claves microbianas tipo 'x1', 'x2'...
+  const keys = Object.keys(abundanciaData.value[0]).filter(k => k.startsWith('x'));
+
+  // Suma total global de cada género
+  const totalAbundancias: Record<string, number> = {};
+  keys.forEach(k => {
+    totalAbundancias[k] = 0;
+    for (let i = 1; i <= numGrupos.value; i++) {
+      totalAbundancias[k] += samplesByGroup[i].reduce((sum, row) => sum + (row[k] || 0), 0);
+    }
+  });
+
+  // Ordenamos de mayor a menor y seleccionamos el top 30%
+  
+  const sortedKeys = keys.sort((a, b) => totalAbundancias[b] - totalAbundancias[a]);
+  const topN = Math.ceil(keys.length * 0.3);
+  const topKeys = sortedKeys.slice(0, topN);
+  const otherKeys = sortedKeys.slice(topN);
+  
+  // Filtramos por abundancia media global ≥ 3%
+  /*
+  const totalMuestras = abundanciaData.value.length;
+  const topKeys = keys.filter(k => (totalAbundancias[k] / totalMuestras) >= 3);
+  const otherKeys = keys.filter(k => !topKeys.includes(k));
+*/
+  // Calculamos la media por grupo para los top
+  const groupAverages: Record<string, number[]> = {};
+  topKeys.forEach(k => {
+    groupAverages[k] = [];
+    for (let i = 1; i <= numGrupos.value; i++) {
+      const grupo = samplesByGroup[i];
+      const mean = grupo.reduce((sum, row) => sum + (row[k] || 0), 0) / (grupo.length || 1);
+      groupAverages[k].push(mean);
+    }
+  });
+
+  // Creamos datasets para top
+  const datasets = topKeys.map((k, i) => ({
+    label: k,
+    data: groupAverages[k],
+    backgroundColor: colores[i % colores.length],
+    stack: 'stack1'
+  }));
+
+  // Agrupamos los "otros"
+  const otros = Array(numGrupos.value).fill(0);
+  for (let i = 1; i <= numGrupos.value; i++) {
+    const grupo = samplesByGroup[i];
+    otherKeys.forEach(k => {
+      otros[i - 1] += grupo.reduce((sum, row) => sum + (row[k] || 0), 0) / (grupo.length || 1);
+    });
+  }
+
+  datasets.push({
+    label: 'Otros',
+    data: otros,
+    backgroundColor: '#999999',
+    stack: 'stack1'
+  });
+
+  const labels = Array.from({ length: numGrupos.value }, (_, i) => `Grupo ${i + 1}`);
+
+  new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Abundancia relativa por grupo (filtrada)'
+        },
+        legend: {
+          position: 'bottom'
+        }
+      },
+      scales: {
+        x: { stacked: true },
+        y: {
+          stacked: true,
+          title: {
+            display: true,
+            text: 'Abundancia relativa (%)'
+          }
+        }
+      }
+    }
+  });
+}
+
+
 
 /**
  * @brief Maneja el cambio de grupo seleccionado desde el menú desplegable
  * @param event Evento de cambio del elemento '<select>' de grupos
  */
+/*
 function handleGroupSelection(event: Event) {
   const selected = parseInt((event.target as HTMLSelectElement).value);
   if (!selected) return;
@@ -632,7 +873,7 @@ function handleGroupSelection(event: Event) {
 
     updateItems();
   });
-}
+}*/
 
 /**
  * @brief Carga los metadatos de todas las muestras desde el backend,
@@ -651,15 +892,15 @@ onMounted(() => {
     .catch((error) => {
       console.error('Error:', error)
     })
-    //COmprobación
+    //Comprobación
     nextTick(() => {
-      console.log("Boxplot data:", shannonBoxData.value);
+      console.log("Violinplot data:", shannonViolinData.value);
 
     const canvas = document.getElementById('shannonChart') as HTMLCanvasElement;
     if (canvas) {
       new Chart(canvas, {
-        type: 'boxplot',
-        data: shannonBoxData.value,
+        type: 'violinplot',
+        data: shannonViolinData.value,
         
         options: chartOptions
       });
@@ -676,9 +917,9 @@ onMounted(() => {
  * @brief Observador reactivo que actualiza el gráfico boxplot cuando cambian los datos Shannon
  * @param newData Datos actualizados para el gráfico boxplot
  */
-watch(shannonBoxData, async (newData) => {
+watch(shannonViolinData, async (newData) => {
   await nextTick(); // Espera a que el DOM esté actualizado
-  const canvas = document.getElementById('shannonBoxplotChart') as HTMLCanvasElement;
+  const canvas = document.getElementById('shannonViolinplotChart') as HTMLCanvasElement;
 
   if (canvas) {
     // Destruir el gráfico anterior si existe
@@ -687,14 +928,13 @@ watch(shannonBoxData, async (newData) => {
     }
 
     new Chart(canvas, {
-      type: 'boxplot',
+      type: 'violin',
       data: newData,
       options: chartOptions
     });
   }
 });
 
-////************PARA EL BOXPLOT  FIN *************/////
 
 function updateItems() {
   items.value = originalItems.value.filter((item) => myList.value.includes(item.diseases))
@@ -702,7 +942,6 @@ function updateItems() {
 
 
 }
-
 
 
 function check()  {
