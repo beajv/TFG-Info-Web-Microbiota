@@ -26,7 +26,37 @@
         </ul>
     </div>
   </nav>
+
   <router-view></router-view>
+    <!-- Modal de Términos y Condiciones -->
+<div
+  class="modal fade"
+  id="termsModal"
+  tabindex="-1"
+  aria-labelledby="termsModalLabel"
+  aria-hidden="true"
+  data-bs-backdrop="static"
+  data-bs-keyboard="false"
+  ref="modalElement"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="termsModalLabel">Términos y Condiciones de Uso de Datos</h5>
+      </div>
+      <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+        <p><strong>Al hacer clic en “Aceptar”, confirmas que has leído y estás de acuerdo con los siguientes términos:</strong></p>
+        <ul>
+          <li>:)</li>
+        </ul>
+        <p></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" @click="aceptarCondiciones">Aceptar</button>
+      </div>
+    </div>
+  </div>
+</div>
 </template>
 
 <style>
@@ -40,4 +70,21 @@
 <script setup lang="ts">
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap/dist/js/bootstrap.min.js'
+import { ref, onMounted, nextTick } from 'vue'
+import { Modal } from 'bootstrap'
+
+const modalElement = ref<HTMLElement | null>(null);
+let modalInstance: Modal | null = null;
+
+function aceptarCondiciones() {
+  if (modalInstance) modalInstance.hide();
+}
+
+onMounted(() => {
+  if (modalElement.value) {
+    modalInstance = new Modal(modalElement.value);
+    modalInstance.show();
+  }
+});
+
 </script>

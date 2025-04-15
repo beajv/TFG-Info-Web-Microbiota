@@ -98,7 +98,14 @@
           </div>
         </div>
 
-
+        <!-- Contador dinámico de pacientes por grupo -->
+        <div class="text-center mb-4" v-if="numGrupos > 0">
+          <div class="d-inline-block text-start border rounded p-3 shadow-sm bg-light">
+            <div v-for="(cantidad, grupo) in conteoGrupos" :key="grupo">
+              <strong>Grupo {{ grupo }}:</strong> {{ cantidad }} pacientes
+            </div>
+          </div>
+        </div>
 
         <div class="d-flex flex-wrap justify-content-center align-items-start gap-5 mt-4">
           <div class="text-center">
@@ -110,7 +117,6 @@
             <canvas id="pcoaChartPorGrupo" class="chart-canvas-large" style="max-width: 1000px; max-height: 500px;"></canvas>
           </div>
         </div>
-
 
         <div class="text-center">
           <h5>Violinplot del índice de Shannon por grupo</h5>
@@ -280,6 +286,7 @@ const colores = [
   '#e7298a', '#66a61e', '#e6ab02', '#a6cee3', '#1b9e77',
   '#b2df8a', '#fb8072', '#80b1d3', '#fdb462', '#b3de69'
 ];
+let colorMap: Record<string, string> = {};
 
 //Datos computados para construir boxplot por grupo
 const shannonViolinData = computed(() => {
@@ -323,6 +330,27 @@ const chartOptions = {
     }
   }
 }
+
+/**
+ * @brief Calcula el número de pacientes por grupo (según enfermedades asignadas a cada uno).
+ */
+ const conteoGrupos = computed(() => {
+  const conteo: Record<number, number> = {};
+
+  for (let i = 1; i <= numGrupos.value; i++) {
+    const enfermedadesDelGrupo = diseases
+      .filter(d => d.group === i)
+      .map(d => d.name);
+
+    const pacientesDelGrupo = originalItems.value
+      .filter(item => enfermedadesDelGrupo.includes(item.diseases)).length;
+
+    conteo[i] = pacientesDelGrupo;
+  }
+
+  return conteo;
+});
+
 
 /**
  * @brief Contador reactivo asociado a una enfermedad específica
@@ -437,6 +465,12 @@ async function getAbundanciaData(site: string) {
   try {
     const response = await axios.get(`http://localhost:8000/abundancias?site=${site}`);
     abundanciaData.value = response.data;
+    const keys = Object.keys(abundanciaData.value[0]).filter(k => k.startsWith('x'));
+    colorMap = {}; // reiniciamos el mapa
+    keys.forEach((k, i) => {
+      colorMap[k] = colores[i % colores.length];
+    });
+
   } catch (error) {
     console.error("Error al obtener abundancias:", error);
   }
@@ -661,24 +695,18 @@ function drawAbundanciaChart() {
 
   const totalMuestras = abundanciaData.value.length;
 
-  // Filtramos los géneros con abundancia media global ≥ 3%
-  /*
-  const topKeys = keys.filter(k => (totalAbundancias[k] / totalMuestras) >= 3);
-  const otherKeys = keys.filter(k => !topKeys.includes(k));
-  */
-  //Filtrar 30% de más abundantes
-  
+  // Filtramos los 20 microorganismos más abundantes
+
   const sortedKeys = keys.sort((a, b) => totalAbundancias[b] - totalAbundancias[a]);
-  const topN = Math.ceil(keys.length * 0.3);
-  const topKeys = sortedKeys.slice(0, topN);
-  const otherKeys = sortedKeys.slice(topN);
+  const topKeys = sortedKeys.slice(0, 15);
+  const otherKeys = sortedKeys.slice(15);
   
   // Dataset de los top
-  const datasets = topKeys.map((k, i) => ({
+    const datasets = topKeys.map((k, i) => ({
     label: k,
     //data: abundanciaData.value.map(d => d[k]),
     data: abundanciaData.value.filter(d => myList.value.includes(d.diseases)).map(d => d[k]),
-    backgroundColor: colores[i % colores.length],
+    backgroundColor: colorMap[k] || '#000000', // usa el mapa de colores
     stack: 'stack1'
   }));
 
@@ -706,7 +734,7 @@ function drawAbundanciaChart() {
       plugins: {
         title: {
           display: true,
-          text: 'Abundancia relativa por enfermedad (filtrada ≥3%)'
+          text: 'Abundancia relativa por enfermedad'
         },
         legend: {
           position: 'bottom'
@@ -761,19 +789,12 @@ function drawAbundanciaPorGrupoChartFiltrado() {
     }
   });
 
-  // Ordenamos de mayor a menor y seleccionamos el top 30%
-  
+  // Filtramos los 20 microorganismos más abundantes
+
   const sortedKeys = keys.sort((a, b) => totalAbundancias[b] - totalAbundancias[a]);
-  const topN = Math.ceil(keys.length * 0.3);
-  const topKeys = sortedKeys.slice(0, topN);
-  const otherKeys = sortedKeys.slice(topN);
-  
-  // Filtramos por abundancia media global ≥ 3%
-  /*
-  const totalMuestras = abundanciaData.value.length;
-  const topKeys = keys.filter(k => (totalAbundancias[k] / totalMuestras) >= 3);
-  const otherKeys = keys.filter(k => !topKeys.includes(k));
-*/
+  const topKeys = sortedKeys.slice(0, 15);
+  const otherKeys = sortedKeys.slice(15);
+
   // Calculamos la media por grupo para los top
   const groupAverages: Record<string, number[]> = {};
   topKeys.forEach(k => {
@@ -789,7 +810,7 @@ function drawAbundanciaPorGrupoChartFiltrado() {
   const datasets = topKeys.map((k, i) => ({
     label: k,
     data: groupAverages[k],
-    backgroundColor: colores[i % colores.length],
+    backgroundColor: colorMap[k] || '#000000', // usa el mapa de colores
     stack: 'stack1'
   }));
 
