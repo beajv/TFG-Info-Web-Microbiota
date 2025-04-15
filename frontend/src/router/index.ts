@@ -5,6 +5,7 @@ import LoginView from '../views/LoginView.vue';
 import UploadView from '../views/UploadView.vue';
 import DataView from '../views/DataView.vue';
 import AnalyticView from '../views/AnalyticView.vue';
+import SearchView from '../views/SearchView.vue';
 
 
 const routes: RouteRecordRaw[] = [
@@ -34,7 +35,12 @@ const routes: RouteRecordRaw[] = [
         path: '/upload',
         name: 'Upload',
         component: UploadView
-    }
+    },
+    {
+        path: '/search',
+        name: 'Search',
+        component: SearchView
+      }
 ];
 
 

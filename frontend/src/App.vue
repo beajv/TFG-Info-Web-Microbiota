@@ -23,6 +23,9 @@
           <li class="nav-item">
             <router-link class="nav-link" to="/analytic/all">Analytic</router-link>
           </li>
+          <li class="nav-item">
+            <router-link class="nav-link" to="/Search/all">Search</router-link>
+          </li>
         </ul>
     </div>
   </nav>

@@ -279,13 +279,38 @@ const betaResults = ref<any[]>([]);
 
 //Colores
 const colores = [
-  '#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854',
-  '#ffd92f', '#e5c494', '#b3b3b3', '#1f78b4', '#33a02c',
-  '#fb9a99', '#fdbf6f', '#cab2d6', '#6a3d9a', '#b15928',
-  '#a65628', '#f781bf', '#999999', '#d95f02', '#7570b3',
-  '#e7298a', '#66a61e', '#e6ab02', '#a6cee3', '#1b9e77',
-  '#b2df8a', '#fb8072', '#80b1d3', '#fdb462', '#b3de69'
+  '#66c2a5', // verde agua
+  '#fc8d62', // salmón
+  '#8da0cb', // azul lavanda
+  '#e78ac3', // rosa fucsia
+  '#a6d854', // lima
+  '#ffd92f', // amarillo
+  '#1f78b4', // azul fuerte
+  '#33a02c', // verde vivo
+  '#fb9a99', // rosa claro
+  '#fdbf6f', // naranja claro
+  '#cab2d6', // lila claro
+  '#6a3d9a', // violeta oscuro
+  '#b15928', // marrón rojizo
+  '#e31a1c', // rojo vivo
+  '#ff7f00', // naranja vivo
+  '#a6cee3', // azul celeste
+  '#b2df8a', // verde pastel
+  '#fb8072', // coral
+  '#80b1d3', // azul pastel
+  '#bc80bd', // púrpura pastel
+  '#ffed6f', // amarillo claro
+  '#33b5e5', // azul cielo
+  '#ff6f69', // rojo coral
+  '#2ecc71', // verde menta
+  '#e67e22', // naranja tostado
+  '#9b59b6', // morado fuerte
+  '#3498db', // azul cielo fuerte
+  '#f1c40f', // amarillo dorado
+  '#e74c3c', // rojo intenso
+  '#16a085'  // verde azulado
 ];
+
 let colorMap: Record<string, string> = {};
 
 //Datos computados para construir boxplot por grupo
@@ -703,7 +728,7 @@ function drawAbundanciaChart() {
   
   // Dataset de los top
     const datasets = topKeys.map((k, i) => ({
-    label: k,
+    label: mother.value[k.toUpperCase()]?.[1] || k,
     //data: abundanciaData.value.map(d => d[k]),
     data: abundanciaData.value.filter(d => myList.value.includes(d.diseases)).map(d => d[k]),
     backgroundColor: colorMap[k] || '#000000', // usa el mapa de colores
@@ -808,7 +833,7 @@ function drawAbundanciaPorGrupoChartFiltrado() {
 
   // Creamos datasets para top
   const datasets = topKeys.map((k, i) => ({
-    label: k,
+    label: mother.value[k.toUpperCase()]?.[1] || k,
     data: groupAverages[k],
     backgroundColor: colorMap[k] || '#000000', // usa el mapa de colores
     stack: 'stack1'
@@ -956,6 +981,32 @@ watch(shannonViolinData, async (newData) => {
   }
 });
 
+/**
+ * @brief Watch reactivo para redibujar automaticamente los gráficos por grupos
+ */
+watch(numGrupos, async () => {
+  await nextTick();
+  if (abundanciaData.value.length > 0) {
+    drawAbundanciaPorGrupoChartFiltrado();
+  }
+  if (betaResults.value && betaResults.value["PC1"]) {
+    drawPCoAChartPorGrupo();
+  }
+});
+/**
+ * @brief watch reactivo para los cambios en los grupos de enfermedades
+ */
+watch(
+  () => diseases.map(d => d.group), // array de grupos actuales
+  async () => {
+    await nextTick();
+    if (numGrupos.value > 0) {
+      drawAbundanciaPorGrupoChartFiltrado();
+      drawPCoAChartPorGrupo();
+    }
+  },
+  { deep: true }
+);
 
 function updateItems() {
   items.value = originalItems.value.filter((item) => myList.value.includes(item.diseases))

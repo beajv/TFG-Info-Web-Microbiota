@@ -101,7 +101,7 @@
 
           <br />
           <ul class="list-group">
-            <li class="list-group-item list-group-item-dark">Diseases</li>
+            <li class="list-group-item list-group-item-dark">Conditions</li>
             <li class="list-group-item"> <input class="form-check-input me-1 disease-check" @click="filterDisease('RM')" type="checkbox"/>RM <span class="badge badge-pill bg-secondary float-end"> {{ numRM }} </span></li>
             <li class="list-group-item"> <input class="form-check-input me-1 disease-check" @click="filterDisease('MALE_FACTOR')" type="checkbox"/>MALE_FACTOR<span class="badge badge-pill bg-secondary float-end"> {{ numMALE_FACTOR }} </span></li>
             <li class="list-group-item"> <input class="form-check-input me-1 disease-check" @click="filterDisease('TUBAL_FACTOR')" type="checkbox"/>TUBAL_FACTOR<span class="badge badge-pill bg-secondary float-end"> {{ numTUBAL_FACTOR }} </span></li>
