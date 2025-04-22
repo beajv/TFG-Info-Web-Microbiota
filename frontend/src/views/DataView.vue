@@ -4,7 +4,7 @@
       <div class="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-light">
         <div class="d-flex flex-column align-items-center align-items-sm-start px-3 pt-5 min-vh-100">
           <ul class="list-group">
-            <li class="list-group-item list-group-item-dark">Taxon level</li>
+            <li class="list-group-item list-group-item-dark custom-header">Taxon level</li>
             <li class="list-group-item">
               <input
                   class="form-check-input me-1"
@@ -14,7 +14,7 @@
                   />
               Genus
             </li>
-            <li class="list-group-item">
+            <li class="list-group-item ">
               <input
                   class="form-check-input me-1"
                   type="checkbox"
@@ -24,9 +24,9 @@
             </li>
           </ul>
           <br />
-          <ul class="list-group">
+          <ul class="list-group ">
             <li
-                class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center"
+                class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center custom-header"
                 >
                 Site
             </li>
@@ -87,7 +87,7 @@
           </ul>
           <br />
           <ul class="list-group">
-            <li class="list-group-item list-group-item-dark">Project</li>
+            <li class="list-group-item list-group-item-dark custom-header">Project</li>
             <li class="list-group-item">
               <input
                   class="form-check-input me-1"
@@ -101,7 +101,7 @@
 
           <br />
           <ul class="list-group">
-            <li class="list-group-item list-group-item-dark">Conditions</li>
+            <li class="list-group-item list-group-item-dark custom-header">Conditions</li>
             <li class="list-group-item"> <input class="form-check-input me-1 disease-check" @click="filterDisease('RM')" type="checkbox"/>RM <span class="badge badge-pill bg-secondary float-end"> {{ numRM }} </span></li>
             <li class="list-group-item"> <input class="form-check-input me-1 disease-check" @click="filterDisease('MALE_FACTOR')" type="checkbox"/>MALE_FACTOR<span class="badge badge-pill bg-secondary float-end"> {{ numMALE_FACTOR }} </span></li>
             <li class="list-group-item"> <input class="form-check-input me-1 disease-check" @click="filterDisease('TUBAL_FACTOR')" type="checkbox"/>TUBAL_FACTOR<span class="badge badge-pill bg-secondary float-end"> {{ numTUBAL_FACTOR }} </span></li>
@@ -116,7 +116,7 @@
       <div class="col py-3">
         <h3>Associated species</h3>
         <p>· Number of patients: {{ patiens }}</p>
-        <table class="table table-hover">
+        <table class="table table-hover aling-middle text-center">
           <thead>
             <tr>
               <th>Genus</th>
@@ -129,8 +129,10 @@
           <tbody>
             <tr v-for="(item) in resultItems" >
 <td>{{ (mother as MotherType)[item.name.toUpperCase()][1] }}</td>
-              <td>
-                <a
+<!-- OPCION 1-->
+<!--
+<td>
+    <a
     :href="'https://www.ebi.ac.uk/ena/browser/view/Taxon:' + (mother as MotherType)[item.name.toUpperCase()][2]"
     target="_blank"
     rel="noopener noreferrer"
@@ -147,6 +149,31 @@
     class="btn btn-sm btn-outline-success"
   >
     NCBI
+  </a>
+</td>
+-->
+<!-- OPCION 2-->
+
+<td>
+    <a
+    :href="'https://www.ebi.ac.uk/ena/browser/view/Taxon:' + (mother as MotherType)[item.name.toUpperCase()][2]"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="btn btn-sm btn-outline-success"
+    title="View in ENA"
+  >
+    <img src="/ENA logo.png" alt="ENA" style="height:22px;"/>
+  </a>
+</td>
+<td>
+  <a
+    :href="'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=' + (mother as MotherType)[item.name.toUpperCase()][3]"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="btn btn-sm btn-outline-primary"
+    title="View in NCBI"
+  >
+  <img src="/ncbi logo.png" alt="NCBI" style="height:22px;"/>
   </a>
 </td>
 
@@ -180,6 +207,20 @@
     box-shadow: none !important;
     border-color: transparent !important;
 }
+/* títulos de columna (thead > th) */
+.table thead th {
+  background-color: #08c0056f; 
+  color: white;              /* Texto en blanco */
+  font-weight: bold;
+  text-align: center;
+  border-bottom: 2px solid #ccc; /* Línea de separación */
+}
+.custom-header {
+  background-color: #4e73df; 
+  color: white;
+  font-weight: bold;
+}
+
 </style>
 
 <script lang="ts" setup>
