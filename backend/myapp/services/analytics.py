@@ -3,6 +3,26 @@ import pandas as pd
 from skbio.diversity.alpha import shannon
 from skbio.diversity import beta_diversity
 from skbio.stats.ordination import pcoa
+
+def cargar_abundancias(site: str):
+    """
+    Carga los datos de abundancia microbiana desde la base de datos PostgreSQL.
+
+    @param site: Nombre del sitio anatómico (por ejemplo, 'cervix', 'vagina', etc.)
+    @return: DataFrame con las filas de la tabla correspondiente.
+    """
+    conn = psycopg2.connect(
+        dbname="postgres",
+        user="postgres",
+        password="postgres",
+        host="localhost",
+        port="5432"
+    )
+    query = f"SELECT * FROM {site};"
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    return df
+
 ##
 # Calcula el índice de Shannon para cada muestra en un sitio anatómico distinto
 # 
@@ -99,12 +119,12 @@ def calcular_beta_diversity(site: str):
     pprint(matriz.to_data_frame().iloc[:5, :5])  # solo mostramos 5x5 para no saturar
 
 if __name__ == "__main__":
-    print("🔬 Probando análisis de diversidad beta + PCoA")
+    print(" Probando análisis de diversidad beta + PCoA")
 
     resultado = calcular_beta_diversity("vagina")  # Puedes cambiar el sitio si quieres
 
-    print("\n✅ Primeras filas del resultado final:")
+    print("\nPrimeras filas del resultado final:")
     print(resultado.head())
 
-    print("\n🔁 Número total de muestras analizadas:", resultado.shape[0])
-    print("📊 Columnas disponibles:", resultado.columns.tolist())
+    print("\n Número total de muestras analizadas:", resultado.shape[0])
+    print(" Columnas disponibles:", resultado.columns.tolist())

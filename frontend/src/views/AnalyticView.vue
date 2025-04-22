@@ -122,7 +122,31 @@
           <h5>Violinplot del índice de Shannon por grupo</h5>
           <canvas id="shannonViolinplotChart" class="chart-canvas-large" width="700" height="400"></canvas>
         </div>
+        <h5 class="mt-4">Biomarcadores diferencialmente abundantes entre grupos</h5>
+          <table class="table table-sm table-bordered">
+            <thead class="table-warning">
+              <tr>
+                <th>Microorganismo</th>
+                <th>Grupo 1<br>(% muestras, media ± std)</th>
+                <th>Grupo 2<br>(% muestras, media ± std)</th>
+                <th>p-valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in biomarcadores" :key="row.micro">
+                <td>{{ mother[row.micro.toUpperCase()]?.[1] || row.micro }}</td>
+                <td>{{ row.n_g1 }} muestras<br>{{ row.mean_g1.toFixed(2) }} ± {{ row.std_g1.toFixed(2) }}</td>
+                <td>{{ row.n_g2 }} muestras<br>{{ row.mean_g2.toFixed(2) }} ± {{ row.std_g2.toFixed(2) }}</td>
+                <td>{{ row.p_value ? row.p_value.toExponential(2) : '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
 
+
+
+
+
+        <!--Opcional para ver los datos -->
           <h5>Índice de Shannon por muestra</h5>
           <table class="table table-sm table-striped">
             <thead>
@@ -276,6 +300,7 @@ const shannonSummary = ref<any[]>([]);
 const abundanciaData = ref<any[]>([]);
 // Beta diversity
 const betaResults = ref<any[]>([]);
+const selectedSite = ref("");  // para recordar el site seleccionado
 
 //Colores
 const colores = [
@@ -419,19 +444,17 @@ function countCases(site: string) {
  * @brief Carga desde el backend los datos asociados a un sitio 
  * @param site Nombre del sitio
  */
-function loadData(site: string){
-
+ async function loadData(site: string) {
+  selectedSite.value = site //Actualizar variable
   originalItems.value = []
   updateItems()
   axios
     .get(import.meta.env.VITE_API_URL + site)
-    .then((response) => {
-
+    .then(async (response) => {
       originalItems.value = response.data
-      
       myList.value = ['RM', 'MALE_FACTOR', 'TUBAL_FACTOR', 'ENDOMETRIOSIS', 'ENDOMETRITIS', 'MIOMA', 'RIF', 'UNEXPLAINED'] 
-      
-      //Recuento por enfermedad
+
+      // Recuentos
       numRM.value = countCases('RM')
       numMALE_FACTOR.value = countCases('MALE_FACTOR')
       numTUBAL_FACTOR.value = countCases('TUBAL_FACTOR')
@@ -443,16 +466,20 @@ function loadData(site: string){
 
       updateItems()
 
-      //Cálculo de métricas analíticas
-      getShannonDiversity(site);
-      getAbundanciaData(site);
-      getBetaDiversity(site);
-      
+      // Carga de gráficas
+      getShannonDiversity(site)
+      getAbundanciaData(site)
+      getBetaDiversity(site)
+
+      //  Esperamos a que se actualicen los grupos antes de enviar biomarcadores
+      await nextTick()
+
     })
     .catch((error) => {
       console.error('Error:', error)
     })
 }
+
 
 /**
  * @brief Obtiene y muestra los resultados del índice de Shannon para un sitio específica
@@ -464,8 +491,8 @@ async function getShannonDiversity(site: string) {
     shannonResults.value = response.data.resumen_muestra;
     shannonSummary.value = response.data.resumen_enfermedad;
     await nextTick()  // Espera a que el DOM esté actualizado
-
-    const ctx = document.getElementById('shannonViolinplotChart') as HTMLCanvasElement
+ 
+    const ctx = document.getElementById('shannonViolinplotChart') as HTMLCanvasElement //Uso DOM
     if (ctx) {
       const oldChart = Chart.getChart(ctx);
       if (oldChart) oldChart.destroy();
@@ -533,13 +560,43 @@ async function getBetaDiversity(site: string) {
     console.error("Error al obtener datos de diversidad beta:", error);
   }
 }
+/**
+ * @brief Obtiene del backend los biomarcadores diferenciales entre dos grupos
+ * @param site Nombre del sitio anatómico 
+ */
+ const biomarcadores = ref([]);
+
+ async function getBiomarcadores(site: string) {
+
+  if (numGrupos.value < 2) {
+    biomarcadores.value = [];
+    return;
+  }
+
+  const mapeo: Record<string, number> = {};
+  diseases.forEach(d => {
+    if (d.group > 0) {
+      mapeo[d.name] = d.group;
+    }
+  });
+
+  try {
+    const response = await axios.post(`http://localhost:8000/biomarcadores?site=${site}`, mapeo);
+    biomarcadores.value = response.data;
+  } catch (error) {
+    console.error(" Error al obtener biomarcadores:", error);
+    biomarcadores.value = [];
+  }
+}
+
+
 
 /**
  * @brief Dibuja el gráfico de dispersión (scatterplot) de diversidad beta
  *        usando las dos primeras componentes principales (PCoA).
  */
  function drawPCoAChart() {
-  const canvas = document.getElementById('pcoaChart') as HTMLCanvasElement;
+  const canvas = document.getElementById('pcoaChart') as HTMLCanvasElement; //uso DOM
   if (!canvas) return;
 
   if (Chart.getChart(canvas)) {
@@ -578,6 +635,7 @@ async function getBetaDiversity(site: string) {
     y: pc2[i],
     label: samples[i]
   });
+   
 });
 
 
@@ -586,7 +644,9 @@ async function getBetaDiversity(site: string) {
   label: disease,
   data: grupos[disease],
   backgroundColor: colorPorEnfermedad[disease] || '#000000', // fallback negro
-  pointRadius: 5,
+  pointRadius: 7,
+  pointHoverRadius: 10,
+  pointHitRadius: 10, // mejora la detección del ratón
   parsing: {
     xAxisKey: 'x',
     yAxisKey: 'y'
@@ -601,10 +661,13 @@ async function getBetaDiversity(site: string) {
       responsive: true,
       plugins: {
         tooltip: {
+          enabled:true,
           callbacks: {
             label: function(context: any) {
               const p = context.raw;
-              return `${p.label} (${context.dataset.label})`;
+              const label = p.label || 'Sin etiqueta';
+              return `${label} (${context.dataset.label})`;
+            
             }
           }
         },
@@ -622,7 +685,7 @@ async function getBetaDiversity(site: string) {
 }
 //Lo mismo por grupos
 function drawPCoAChartPorGrupo() {
-  const canvas = document.getElementById('pcoaChartPorGrupo') as HTMLCanvasElement;
+  const canvas = document.getElementById('pcoaChartPorGrupo') as HTMLCanvasElement; //uso DOM
   if (!canvas || numGrupos.value === 0) return;
 
   if (Chart.getChart(canvas)) {
@@ -659,7 +722,9 @@ function drawPCoAChartPorGrupo() {
     label: `Grupo ${g}`,
     data: grupos[Number(g)],
     backgroundColor: colores[i % colores.length],
-    pointRadius: 5,
+    pointRadius: 7,
+    pointHoverRadius: 10,
+    pointHitRadius: 10, // mejora la detección del ratón
     parsing: {
       xAxisKey: 'x',
       yAxisKey: 'y'
@@ -1003,6 +1068,11 @@ watch(
     if (numGrupos.value > 0) {
       drawAbundanciaPorGrupoChartFiltrado();
       drawPCoAChartPorGrupo();
+      // Añadimos esta llamada cuando los grupos están definidos
+      const hayAlMenosDosGrupos = diseases.some(d => d.group === 1) && diseases.some(d => d.group === 2);
+      if (hayAlMenosDosGrupos && selectedSite.value) {
+        getBiomarcadores(selectedSite.value);
+      }
     }
   },
   { deep: true }

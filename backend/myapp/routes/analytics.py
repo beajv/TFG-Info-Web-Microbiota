@@ -8,7 +8,11 @@ from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 from myapp.services.analytics import calcular_shannon_por_site
 from myapp.services.analytics import calcular_beta_diversity
-
+from myapp.services.analytics import cargar_abundancias
+"""No lo he podido usar porque necesita que ambos grupos tengan mismo
+numero de muestras y dado que esto iba a resultar dificil he opctado por Mann-Whitney U"""
+from scipy.stats import wilcoxon 
+from scipy.stats import mannwhitneyu
 import pandas as pd
 import numpy as np
 
@@ -26,7 +30,7 @@ router = APIRouter()
 """
 @router.get("/shannon")
 def calcular_shannon(site: str = Query(...)):
-    print("🔍 Entrando al endpoint /shannon con site =", site)
+    print(" Entrando al endpoint /shannon con site =", site)
 
     tablas_validas = ["vagina", "cervix", "uterus", "rectum", "orine"]
     if site not in tablas_validas:
@@ -92,7 +96,7 @@ def calcular_beta(site: str = Query(...)):
         if site not in tablas_validas:
             return JSONResponse(status_code=400, content={"error": "Nombre de tabla no permitido"})
 
-        print(f"🔬 Calculando diversidad beta + PCoA para {site}")
+        print(f" Calculando diversidad beta + PCoA para {site}")
         resultado = calcular_beta_diversity(site)
 
         from fastapi.encoders import jsonable_encoder
@@ -101,5 +105,63 @@ def calcular_beta(site: str = Query(...)):
         return JSONResponse(content=resultado_json)
 
     except Exception as e:
-        print("❌ ERROR en /beta:", str(e))
+        print(" ERROR en /beta:", str(e))
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+"""
+     Calcula los biomarcadores diferencialmente relevantes entre dos grupos 
+    usando el test estadístico de mannwhitneyu para cada microorganismo.
+
+    @param site: Nombre del sitio anatómico .
+    @return list: Lista de diccionarios, uno por cada microorganismo, con:
+        - micro: nombre del microorganismo (ej. 'x1', 'x2'...)
+        - mean_g1: media de abundancia en el grupo 1
+        - std_g1: desviación estándar en el grupo 1
+        - n_g1: número de muestras del grupo 1
+        - mean_g2: media de abundancia en el grupo 2
+        - std_g2: desviación estándar en el grupo 2
+        - n_g2: número de muestras del grupo 2
+        - p_value: valor p obtenido del test de mannwhitneyu
+"""
+from fastapi import Body
+import traceback
+@router.post("/biomarcadores")
+def get_biomarcadores(
+    site: str = Query(...),
+    grupos: dict = Body(...)
+):
+    
+    try:
+        df = cargar_abundancias(site)
+        df["grupo"] = df["diseases"].map(grupos)  # se usa el diccionario enviado
+
+        keys_microorganismos = [col for col in df.columns if col.startswith("x")]
+        resultados = []
+
+        for micro in keys_microorganismos:
+            g1 = df[df["grupo"] == 1][micro]
+            g2 = df[df["grupo"] == 2][micro]
+
+            if len(g1) > 0 and len(g2) > 0:
+                stat, p = mannwhitneyu(g1, g2, alternative='two-sided')
+            else:
+                p = None
+
+            resultados.append({
+                "micro": micro,
+                "mean_g1": g1.mean(),
+                "std_g1": g1.std(),
+                "n_g1": len(g1),
+                "mean_g2": g2.mean(),
+                "std_g2": g2.std(),
+                "n_g2": len(g2),
+                "p_value": p
+            })
+
+        return resultados
+
+    except Exception as e:
+        print("Error en get_biomarcadores:")
+        traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
