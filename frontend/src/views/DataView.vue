@@ -130,15 +130,26 @@
             <tr v-for="(item) in resultItems" >
 <td>{{ (mother as MotherType)[item.name.toUpperCase()][1] }}</td>
               <td>
-<a :href="'https://www.ebi.ac.uk/ena/browser/view/Taxon:' + (mother as MotherType)[(item.name as string).toUpperCase()][2]"
-     target="_blank"
-     rel="noopener noreferrer">
-    {{ (mother as MotherType)[(item.name as string).toUpperCase()][2] }}
+                <a
+    :href="'https://www.ebi.ac.uk/ena/browser/view/Taxon:' + (mother as MotherType)[item.name.toUpperCase()][2]"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="btn btn-sm btn-outline-primary"
+  >
+    ENA 
   </a>
-
-
 </td>
-<td>{{ (mother as MotherType)[item.name.toUpperCase()][3] }}</td>
+<td>
+  <a
+    :href="'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=' + (mother as MotherType)[item.name.toUpperCase()][3]"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="btn btn-sm btn-outline-success"
+  >
+    NCBI
+  </a>
+</td>
+
               <td>{{ item.countComplete }}</td>
               <td>{{ item.relative }}</td>
             </tr>
