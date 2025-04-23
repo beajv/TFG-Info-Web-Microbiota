@@ -15,7 +15,8 @@ from scipy.stats import wilcoxon
 from scipy.stats import mannwhitneyu
 import pandas as pd
 import numpy as np
-
+from fastapi import Body
+import traceback
 router = APIRouter()
 
 """
@@ -124,8 +125,7 @@ def calcular_beta(site: str = Query(...)):
         - n_g2: número de muestras del grupo 2
         - p_value: valor p obtenido del test de mannwhitneyu
 """
-from fastapi import Body
-import traceback
+
 @router.post("/biomarcadores")
 def get_biomarcadores(
     site: str = Query(...),
@@ -165,3 +165,9 @@ def get_biomarcadores(
         print("Error en get_biomarcadores:")
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+@router.post("/abundancia_por_grupo")
+def abundancia_por_grupo(site: str = Query(...), grupos: dict = Body(...)):
+    from myapp.services.analytics import calcular_abundancia_por_grupo
+    resultado = calcular_abundancia_por_grupo(site, grupos)
+    return resultado

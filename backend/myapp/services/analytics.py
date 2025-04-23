@@ -3,14 +3,13 @@ import pandas as pd
 from skbio.diversity.alpha import shannon
 from skbio.diversity import beta_diversity
 from skbio.stats.ordination import pcoa
-
+##
+#   Carga los datos de abundancia microbiana desde la base de datos PostgreSQL.
+#   @param site: Nombre del sitio anatómico (por ejemplo, 'cervix', 'vagina', etc.)
+#   @return: DataFrame con las filas de la tabla correspondiente.
+#   
 def cargar_abundancias(site: str):
-    """
-    Carga los datos de abundancia microbiana desde la base de datos PostgreSQL.
-
-    @param site: Nombre del sitio anatómico (por ejemplo, 'cervix', 'vagina', etc.)
-    @return: DataFrame con las filas de la tabla correspondiente.
-    """
+    
     conn = psycopg2.connect(
         dbname="postgres",
         user="postgres",
@@ -103,6 +102,29 @@ def calcular_beta_diversity(site: str):
 
     return merged_df
 
+
+def calcular_abundancia_por_grupo(site: str, mapeo_enfermedad_a_grupo: dict):
+    import psycopg2
+    import pandas as pd
+
+    conn = psycopg2.connect(
+        dbname="postgres",
+        user="postgres",
+        password="postgres",
+        host="localhost",
+        port="5432"
+    )
+    query = f"SELECT * FROM {site};"
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+
+    df["grupo"] = df["diseases"].map(mapeo_enfermedad_a_grupo)
+    df = df[df["grupo"].notna()]  # Elimina enfermedades sin grupo asignado
+
+    micro_cols = [col for col in df.columns if col.startswith("x")]
+    resultado = df.groupby("grupo")[micro_cols].mean().reset_index()
+
+    return resultado.to_dict(orient="records")
 
 # Código de prueba
 #if __name__ == "__main__":

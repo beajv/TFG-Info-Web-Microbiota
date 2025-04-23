@@ -134,10 +134,11 @@
             </thead>
             <tbody>
               <tr 
-                  v-for="row in biomarcadores" 
+                  v-for="row in biomarcadores"
                   :key="row.micro"
-                  :class="{ 'fila-significativa': row.p_value != null && row.p_value < 0.05 }"
+                  :class="{ 'fila-significativa': esSignificativo(row.p_value) }"
                 >
+
                 <td>{{ mother[row.micro.toUpperCase()]?.[1] || row.micro }}</td>
                 <td>
                   {{ row.n_g1 }}/{{ row.n_g1+row.n_g2}} muestras,
@@ -248,8 +249,8 @@
 }
 
 /* Resalta la fila con pvalor significativo*/ 
-.fila-significativa {
-  background-color: #eafbea !important; /* verde muy suave, puedes cambiarlo */
+table tr.fila-significativa td {
+  background-color: #eefbea !important; /* Verde clarito */
 }
 
 
@@ -396,6 +397,11 @@ const chartOptions = {
   }
 }
 
+function esSignificativo(p: any): boolean {
+  const valor = parseFloat(p);
+  const resultado = !isNaN(valor) && valor < 0.05;
+  return resultado;
+}
 /**
  * @brief Calcula el número de pacientes por grupo (según enfermedades asignadas a cada uno).
  */
@@ -488,6 +494,10 @@ function countCases(site: string) {
 
       //  Esperamos a que se actualicen los grupos antes de enviar biomarcadores
       await nextTick()
+      if (numGrupos.value > 0 && selectedSite.value) {
+        getAbundanciaPorGrupo(selectedSite.value);
+      }
+
 
     })
     .catch((error) => {
@@ -601,6 +611,25 @@ async function getBetaDiversity(site: string) {
   } catch (error) {
     console.error(" Error al obtener biomarcadores:", error);
     biomarcadores.value = [];
+  }
+}
+
+const abundanciaPorGrupo = ref<any[]>([]);
+
+async function getAbundanciaPorGrupo(site: string) {
+  const mapeo: Record<string, number> = {};
+  diseases.forEach(d => {
+    if (d.group > 0) {
+      mapeo[d.name] = d.group;
+    }
+  });
+
+  try {
+    const response = await axios.post(`http://localhost:8000/abundancia_por_grupo?site=${site}`, mapeo);
+    abundanciaPorGrupo.value = response.data;
+    drawAbundanciaPorGrupoChartFiltrado();  // la adaptarás en el siguiente paso
+  } catch (error) {
+    console.error("Error al obtener abundancia por grupo:", error);
   }
 }
 
@@ -861,72 +890,43 @@ function drawAbundanciaChart() {
   });
 }
 
-//
 function drawAbundanciaPorGrupoChartFiltrado() {
   const canvas = document.getElementById('abundanciaChartFiltrado') as HTMLCanvasElement;
-  if (!canvas || numGrupos.value === 0) return;
+  if (!canvas || numGrupos.value === 0 || abundanciaPorGrupo.value.length === 0) return;
 
-  // Destruimos el gráfico anterior si existe
   const oldChart = Chart.getChart(canvas);
   if (oldChart) oldChart.destroy();
 
-  // Agrupamos enfermedades por grupo
-  const groupMapping: Record<number, string[]> = {};
-  for (let i = 1; i <= numGrupos.value; i++) {
-    groupMapping[i] = diseases.filter(d => d.group === i).map(d => d.name);
-  }
+  const keys = Object.keys(abundanciaPorGrupo.value[0] || {}).filter(k => k.startsWith("x"));
 
-  // Agrupamos muestras por grupo
-  const samplesByGroup: Record<number, any[]> = {};
-  for (let i = 1; i <= numGrupos.value; i++) {
-    samplesByGroup[i] = abundanciaData.value.filter(d => groupMapping[i].includes(d.diseases));
-  }
-
-  // Claves microbianas tipo 'x1', 'x2'...
-  const keys = Object.keys(abundanciaData.value[0]).filter(k => k.startsWith('x'));
-
-  // Suma total global de cada género
-  const totalAbundancias: Record<string, number> = {};
+  // Ordenar los microorganismos por abundancia total (suma de todos los grupos)
+  const sumaTotal: Record<string, number> = {};
   keys.forEach(k => {
-    totalAbundancias[k] = 0;
-    for (let i = 1; i <= numGrupos.value; i++) {
-      totalAbundancias[k] += samplesByGroup[i].reduce((sum, row) => sum + (row[k] || 0), 0);
-    }
+    sumaTotal[k] = abundanciaPorGrupo.value.reduce((acc, row) => acc + (row[k] || 0), 0);
   });
 
-  // Filtramos los 20 microorganismos más abundantes
+  const topKeys = Object.entries(sumaTotal)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15)
+    .map(([key]) => key);
 
-  const sortedKeys = keys.sort((a, b) => totalAbundancias[b] - totalAbundancias[a]);
-  const topKeys = sortedKeys.slice(0, 15);
-  const otherKeys = sortedKeys.slice(15);
+  const otherKeys = keys.filter(k => !topKeys.includes(k));
 
-  // Calculamos la media por grupo para los top
-  const groupAverages: Record<string, number[]> = {};
-  topKeys.forEach(k => {
-    groupAverages[k] = [];
-    for (let i = 1; i <= numGrupos.value; i++) {
-      const grupo = samplesByGroup[i];
-      const mean = grupo.reduce((sum, row) => sum + (row[k] || 0), 0) / (grupo.length || 1);
-      groupAverages[k].push(mean);
-    }
+  // Dataset para los top
+  const datasets = topKeys.map((k, i) => {
+    const nombre = typeof k === 'string' && mother.value[k.toUpperCase()]?.[1] ? mother.value[k.toUpperCase()][1] : k;
+    return {
+      label: nombre,
+      data: abundanciaPorGrupo.value.map(row => row[k] ?? 0),
+      backgroundColor: colorMap[k] || '#000000',
+      stack: 'stack1'
+    };
   });
 
-  // Creamos datasets para top
-  const datasets = topKeys.map((k, i) => ({
-    label: mother.value[k.toUpperCase()]?.[1] || k,
-    data: groupAverages[k],
-    backgroundColor: colorMap[k] || '#000000', // usa el mapa de colores
-    stack: 'stack1'
-  }));
-
-  // Agrupamos los "otros"
-  const otros = Array(numGrupos.value).fill(0);
-  for (let i = 1; i <= numGrupos.value; i++) {
-    const grupo = samplesByGroup[i];
-    otherKeys.forEach(k => {
-      otros[i - 1] += grupo.reduce((sum, row) => sum + (row[k] || 0), 0) / (grupo.length || 1);
-    });
-  }
+  // Dataset para "Otros"
+  const otros = abundanciaPorGrupo.value.map(row =>
+    otherKeys.reduce((sum, k) => sum + (row[k] || 0), 0)
+  );
 
   datasets.push({
     label: 'Otros',
@@ -935,14 +935,11 @@ function drawAbundanciaPorGrupoChartFiltrado() {
     stack: 'stack1'
   });
 
-  const labels = Array.from({ length: numGrupos.value }, (_, i) => `Grupo ${i + 1}`);
+  const labels = abundanciaPorGrupo.value.map((_, i) => `Grupo ${i + 1}`);
 
   new Chart(canvas, {
     type: 'bar',
-    data: {
-      labels,
-      datasets
-    },
+    data: { labels, datasets },
     options: {
       responsive: true,
       plugins: {
@@ -970,36 +967,6 @@ function drawAbundanciaPorGrupoChartFiltrado() {
 
 
 
-/**
- * @brief Maneja el cambio de grupo seleccionado desde el menú desplegable
- * @param event Evento de cambio del elemento '<select>' de grupos
- */
-/*
-function handleGroupSelection(event: Event) {
-  const selected = parseInt((event.target as HTMLSelectElement).value);
-  if (!selected) return;
-
-  selectedGroups.value = [selected];
-
-  // Encuentra las enfermedades asignadas a este grupo
-  const assigned = diseases
-    .filter(d => d.group === selected)
-    .map(d => d.name);
-
-  // Asigna esas enfermedades a myList
-  myList.value = []; // limpia antes
-
-  nextTick(() => {
-    myList.value = [...assigned];
-    // Recorre los checkbox del DOM
-    const checkboxes = document.querySelectorAll('.disease-check');
-    checkboxes.forEach((c) => {
-      console.log("Checkbox ID:", c.id, " Value:", (c as HTMLInputElement).value);
-    });
-
-    updateItems();
-  });
-}*/
 
 /**
  * @brief Carga los metadatos de todas las muestras desde el backend,
@@ -1081,6 +1048,9 @@ watch(
   async () => {
     await nextTick();
     if (numGrupos.value > 0) {
+      if (selectedSite.value) {
+        await getAbundanciaPorGrupo(selectedSite.value); // Cargar datos antes de pintar
+      }
       drawAbundanciaPorGrupoChartFiltrado();
       drawPCoAChartPorGrupo();
       // Añadimos esta llamada cuando los grupos están definidos
