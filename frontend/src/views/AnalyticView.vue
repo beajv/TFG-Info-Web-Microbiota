@@ -133,10 +133,21 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in biomarcadores" :key="row.micro">
+              <tr 
+                  v-for="row in biomarcadores" 
+                  :key="row.micro"
+                  :class="{ 'fila-significativa': row.p_value != null && row.p_value < 0.05 }"
+                >
                 <td>{{ mother[row.micro.toUpperCase()]?.[1] || row.micro }}</td>
-                <td>{{ row.n_g1 }} muestras<br>{{ row.mean_g1.toFixed(2) }} ± {{ row.std_g1.toFixed(2) }}</td>
-                <td>{{ row.n_g2 }} muestras<br>{{ row.mean_g2.toFixed(2) }} ± {{ row.std_g2.toFixed(2) }}</td>
+                <td>
+                  {{ row.n_g1 }}/{{ row.n_g1+row.n_g2}} muestras,
+                  {{ Math.round((row.n_g1/(row.n_g1+row.n_g2))*100) }} % <br>
+                  {{ row.mean_g1.toFixed(2) }} ± {{ row.std_g1.toFixed(2) }}
+                </td>
+                <td>
+                  {{ row.n_g2 }}/{{ row.n_g1+row.n_g2}} muestras,
+                  {{ Math.round((row.n_g2/(row.n_g1+row.n_g2))*100) }} % <br>
+                  {{ row.mean_g2.toFixed(2) }} ± {{ row.std_g2.toFixed(2) }}</td>
                 <td>{{ row.p_value ? row.p_value.toExponential(2) : '—' }}</td>
               </tr>
             </tbody>
@@ -236,6 +247,10 @@
   margin: 0 auto 2rem;
 }
 
+/* Resalta la fila con pvalor significativo*/ 
+.fila-significativa {
+  background-color: #eafbea !important; /* verde muy suave, puedes cambiarlo */
+}
 
 
 </style>
