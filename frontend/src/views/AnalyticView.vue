@@ -90,11 +90,11 @@
           <div class="d-flex flex-wrap justify-content-center align-items-start mt-4 gap-5">
           <div class="text-center">
             <h5>Abundancia relativa por género (por enfermedad)</h5>
-            <canvas id="abundanciaChart" class="chart-canvas-large" width="800" height="600"></canvas>
+            <canvas id="abundanciaChart" class="chart-canvas-large" width="800" height="400" style="width: 800px; height: 400px;"></canvas>
           </div>
           <div class="text-center">
             <h5>Abundancia relativa por género (por grupo)</h5>
-            <canvas id="abundanciaChartFiltrado" class="chart-canvas-large" width="800" height="500"></canvas>
+            <canvas id="abundanciaChartFiltrado" class="chart-canvas-large" width="800" height="400" style="width: 800px; height: 400px;"></canvas>
           </div>
         </div>
 
@@ -139,7 +139,19 @@
                   :class="{ 'fila-significativa': esSignificativo(row.p_value) }"
                 >
 
-                <td>{{ mother[row.micro.toUpperCase()]?.[1] || row.micro }}</td>
+                <td>
+                  {{
+                    (() => {
+                      const entry = mother[row.micro.toUpperCase()];
+                      if (entry) {
+                        const name1 = (entry[1] || '').trim(); // género
+                        const name0 = (entry[0] || '').trim(); // familia
+                        return name1 !== '' ? name1 : (name0 !== '' ? name0 : row.micro);
+                      }
+                      return row.micro;
+                    })()
+                  }}
+                </td>
                 <td>
                   {{ row.n_g1 }}/{{ row.n_g1+row.n_g2}} muestras,
                   {{ Math.round((row.n_g1/(row.n_g1+row.n_g2))*100) }} % <br>
@@ -221,7 +233,6 @@
 .chart-canvas {
   width: 100% !important;
   height: auto !important;
-  max-width: 800px;
   margin-bottom: 2rem;
 }
 
@@ -627,7 +638,7 @@ async function getAbundanciaPorGrupo(site: string) {
   try {
     const response = await axios.post(`http://localhost:8000/abundancia_por_grupo?site=${site}`, mapeo);
     abundanciaPorGrupo.value = response.data;
-    drawAbundanciaPorGrupoChartFiltrado();  // la adaptarás en el siguiente paso
+    drawAbundanciaPorGrupoChartFiltrado(); 
   } catch (error) {
     console.error("Error al obtener abundancia por grupo:", error);
   }
@@ -816,7 +827,7 @@ function drawAbundanciaChart() {
 
   //const enfermedades = abundanciaData.value.map(d => d.diseases);
   const enfermedades = abundanciaData.value
-  .filter(d => myList.value.includes(d.diseases)) // 👈 Filtra aquí
+  .filter(d => myList.value.includes(d.diseases)) //  Filtra aquí
   .map(d => d.diseases);
 
   const keys = Object.keys(abundanciaData.value[0]).filter(k => k.startsWith('x'));
@@ -829,7 +840,7 @@ function drawAbundanciaChart() {
 
   const totalMuestras = abundanciaData.value.length;
 
-  // Filtramos los 20 microorganismos más abundantes
+  // Filtramos los 15 microorganismos más abundantes
 
   const sortedKeys = keys.sort((a, b) => totalAbundancias[b] - totalAbundancias[a]);
   const topKeys = sortedKeys.slice(0, 15);
@@ -837,7 +848,11 @@ function drawAbundanciaChart() {
   
   // Dataset de los top
     const datasets = topKeys.map((k, i) => ({
-    label: mother.value[k.toUpperCase()]?.[1] || k,
+    //.value[k.toUpperCase()]?.[1] || k,
+    label: (mother.value[k.toUpperCase()]?.[1] || '').trim() !== ''
+    ? mother.value[k.toUpperCase()][1]
+    : (mother.value[k.toUpperCase()]?.[0] || k),
+
     //data: abundanciaData.value.map(d => d[k]),
     data: abundanciaData.value.filter(d => myList.value.includes(d.diseases)).map(d => d[k]),
     backgroundColor: colorMap[k] || '#000000', // usa el mapa de colores
@@ -847,7 +862,7 @@ function drawAbundanciaChart() {
   // Dataset de "otros"
   //const otros = abundanciaData.value.map(d =>otherKeys.reduce((sum, k) => sum + (d[k] || 0), 0));
   const otros = abundanciaData.value
-  .filter(d => myList.value.includes(d.diseases)) // 👈 aquí también
+  .filter(d => myList.value.includes(d.diseases)) // aquí también
   .map(d => otherKeys.reduce((sum, k) => sum + (d[k] || 0), 0));
 
   datasets.push({
@@ -871,7 +886,16 @@ function drawAbundanciaChart() {
           text: 'Abundancia relativa por enfermedad'
         },
         legend: {
-          position: 'bottom'
+          display: true,
+          position: 'top',
+          labels: {
+            usePointStyle: true ,
+          //  pointStyle: 'rect',
+          //  padding: 20,          // Aumenta la separación entre elementos
+          //  boxWidth: 20,         // Tamaño de icono (mejor clicable)
+          //  boxHeight: 10    
+          }
+          
         }
       },
       scales: {
@@ -914,7 +938,15 @@ function drawAbundanciaPorGrupoChartFiltrado() {
 
   // Dataset para los top
   const datasets = topKeys.map((k, i) => {
-    const nombre = typeof k === 'string' && mother.value[k.toUpperCase()]?.[1] ? mother.value[k.toUpperCase()][1] : k;
+    const nombre = (() => {
+      const entry = mother.value[k.toUpperCase()];
+      if (entry) {
+        const name1 = (entry[1] || '').trim(); //género
+        const name0 = (entry[0] || '').trim(); //familia
+        return name1 !== '' ? name1 : (name0 !== '' ? name0 : k);
+      }
+      return k;
+    })();
     return {
       label: nombre,
       data: abundanciaPorGrupo.value.map(row => row[k] ?? 0),
@@ -948,7 +980,16 @@ function drawAbundanciaPorGrupoChartFiltrado() {
           text: 'Abundancia relativa por grupo (filtrada)'
         },
         legend: {
-          position: 'bottom'
+          display: true,
+          position: 'top',
+          labels: {
+            usePointStyle: true ,
+          //  pointStyle: 'rect',
+          //  padding: 20,          // Aumenta la separación entre elementos
+          //  boxWidth: 20,         // Tamaño de icono (mejor clicable)
+          //  boxHeight: 10    
+          }
+          
         }
       },
       scales: {
@@ -1062,6 +1103,33 @@ watch(
   },
   { deep: true }
 );
+/**
+ * @brief watch reactivo para los cambios en las checkbox de conditions
+ */
+watch(myList, async () => {
+  await nextTick();
+  drawAbundanciaChart();
+  if (numGrupos.value > 0) {
+    drawAbundanciaPorGrupoChartFiltrado();
+    drawPCoAChartPorGrupo();
+  } else {
+    drawPCoAChart();
+  }
+}, { deep: true });
+
+watch(myList, async () => {
+  await nextTick();
+  const canvas = document.getElementById('shannonViolinplotChart') as HTMLCanvasElement;
+  if (canvas && Chart.getChart(canvas)) {
+    Chart.getChart(canvas)?.destroy();
+  }
+
+  new Chart(canvas, {
+    type: 'violin',
+    data: shannonViolinData.value,
+    options: chartOptions
+  });
+});
 
 function updateItems() {
   items.value = originalItems.value.filter((item) => myList.value.includes(item.diseases))

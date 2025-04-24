@@ -185,7 +185,7 @@ svg {
 
 -->
 
-<!-- VERSIÓN SÓLO ILUMINA APARATO REPRODUCTOR no pone etiqueta -->
+<!-- VERSIÓN SÓLO ILUMINA APARATO REPRODUCTOR  -->
 
 <template>
   <div id="svg-container">
