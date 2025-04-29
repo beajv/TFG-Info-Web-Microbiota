@@ -171,3 +171,5 @@ def abundancia_por_grupo(site: str = Query(...), grupos: dict = Body(...)):
     from myapp.services.analytics import calcular_abundancia_por_grupo
     resultado = calcular_abundancia_por_grupo(site, grupos)
     return resultado
+
+

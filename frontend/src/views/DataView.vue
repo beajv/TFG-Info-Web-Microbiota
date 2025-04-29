@@ -372,7 +372,7 @@ function loadData(site: string){
   originalItems.value = []
   updateItems()
   axios
-    .get(import.meta.env.VITE_API_URL + site)
+    .get(import.meta.env.VITE_API_URL +'data/'+ site)
     .then((response) => {
 
       originalItems.value = response.data
@@ -403,7 +403,7 @@ function loadData(site: string){
 
 onMounted(() => {
   axios
-    .get(import.meta.env.VITE_API_URL + 'all')
+    .get(import.meta.env.VITE_API_URL + 'data/all')
     .then((response) => {
 
       mother.value = response.data

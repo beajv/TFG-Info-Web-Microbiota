@@ -481,7 +481,7 @@ function countCases(site: string) {
   originalItems.value = []
   updateItems()
   axios
-    .get(import.meta.env.VITE_API_URL + site)
+    .get(import.meta.env.VITE_API_URL +'data/'+ site)
     .then(async (response) => {
       originalItems.value = response.data
       myList.value = ['RM', 'MALE_FACTOR', 'TUBAL_FACTOR', 'ENDOMETRIOSIS', 'ENDOMETRITIS', 'MIOMA', 'RIF', 'UNEXPLAINED'] 
@@ -1016,7 +1016,7 @@ function drawAbundanciaPorGrupoChartFiltrado() {
  */
 onMounted(() => {
   axios
-    .get(import.meta.env.VITE_API_URL + 'all')
+    .get(import.meta.env.VITE_API_URL +'data/'+ 'all')
     .then((response) => {
 
       mother.value = response.data

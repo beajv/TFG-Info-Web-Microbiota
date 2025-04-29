@@ -37,17 +37,18 @@ const routes: RouteRecordRaw[] = [
         component: UploadView
     },
     {
-        path: '/search',
+        path: '/search/:id',
         name: 'Search',
-        component: SearchView
+        component: SearchView,
+        props: true,
       }
 ];
 
 
 const router = createRouter({
-    history: createWebHistory(),
+    history: createWebHistory(import.meta.env.BASE_URL),
     routes
-});
+  })
 
 
 export default router;
