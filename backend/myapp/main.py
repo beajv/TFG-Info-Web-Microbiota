@@ -18,6 +18,7 @@ from starlette.middleware import Middleware
 from myapp.routes import analytics
 from myapp.services.analytics import calcular_abundancias_por_disease
 from myapp.routes import search
+from myapp.routes import summary
 
 
 #Inicializa las tablas si no existen
@@ -57,6 +58,7 @@ app.add_middleware(
 # Importa y registra las rutas de análisis (gráficos, índice de Shannon, etc.)
 app.include_router(analytics.router)
 app.include_router(search.router)
+app.include_router(summary.router)
 
 
 ##
