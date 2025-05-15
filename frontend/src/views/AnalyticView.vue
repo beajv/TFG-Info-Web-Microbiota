@@ -17,6 +17,10 @@
       <!-- Panel lateral -->
       <div class="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-light sidebar-fixed">
         <div class="d-flex flex-column align-items-center align-items-sm-start px-3 pt-5 min-vh-100">
+          <!--Botón reset-->
+          <button class="btn btn-outline-danger mb-3" @click="resetSelections" aria-label="Reset button">
+            Reset
+          </button>
           <!-- Site -->
           <ul class="list-group">
             <li class="list-group-item custom-header d-flex justify-content-between align-items-center">Site</li>
@@ -47,7 +51,7 @@
           <ul class="list-group">
             <li class="list-group-item custom-header">
               <label for="groupSelector">Groups</label>
-              <select class="form-select mt-2" id="groupSelector" v-model.number="numGrupos">
+              <select class="form-select mt-2" id="groupSelector" v-model.number="numGrupos" aria-label="Group Selector">
                 <option value="0">-- No groups --</option>
                 <option value="2">2 groups</option>
                 <option value="3">3 groups</option>
@@ -62,8 +66,20 @@
             <li class="list-group-item custom-header">Condition</li>
             <li class="list-group-item d-flex justify-content-between flex-wrap align-items-center" v-for="disease in diseases" :key="disease.name">
               <div class="d-flex align-items-center flex-wrap overflow-hidden">
-                <input class="form-check-input me-1 disease-check" :id="'check_' + disease.name" type="checkbox" :value="disease.name" v-model="myList" />
-                {{ disease.name }}
+                <input
+                  class="form-check-input me-1 disease-check"
+                  :id="'check_' + disease.name"
+                  type="checkbox"
+                  :value="disease.name"
+                  v-model="myList"
+                />
+                <!--Etiqueta para la accesibilidad-->
+                <label
+                  class="ms-1"
+                  :for="'check_' + disease.name"
+                >
+                  {{ disease.name }}
+                </label>
                 <span class="badge badge-pill bg-secondary ms-2">{{ getCount(disease.name) }}</span>
               </div>
               <select class="form-select form-select-sm w-auto" v-model.number="disease.group" @change="updateItems">
@@ -87,14 +103,14 @@
         <!-- Gráficos -->
         <div class="mt-4">
           
-          <div class="d-flex flex-wrap justify-content-center align-items-start mt-4 gap-5">
-          <div class="text-center">
-            <h5>Abundancia relativa por género (por enfermedad)</h5>
-            <canvas id="abundanciaChart" class="chart-canvas-large" width="800" height="400" style="width: 800px; height: 400px;"></canvas>
+          <div class="row gx-4 gy-4 justify-content-center">
+          <div class="col-md-6 text-center">
+            <h5>Relative abundance by condition</h5>
+            <canvas id="abundanciaChart" class="chart-canvas-large" role="img" aria-label="Relative abundance by condition" width="800" height="400" style="width: 800px; height: 400px;"></canvas>
           </div>
-          <div class="text-center">
-            <h5>Abundancia relativa por género (por grupo)</h5>
-            <canvas id="abundanciaChartFiltrado" class="chart-canvas-large" width="800" height="400" style="width: 800px; height: 400px;"></canvas>
+          <div class="col-md-6 text-center">
+            <h5>Relative abundance by group</h5>
+            <canvas id="abundanciaChartFiltrado" class="chart-canvas-large" role="img" aria-label="Relative abundance by group" width="800" height="400" style="width: 800px; height: 400px;"></canvas>
           </div>
         </div>
 
@@ -102,34 +118,35 @@
         <div class="text-center mb-4" v-if="numGrupos > 0">
           <div class="d-inline-block text-start border rounded p-3 shadow-sm bg-light">
             <div v-for="(cantidad, grupo) in conteoGrupos" :key="grupo">
-              <strong>Grupo {{ grupo }}:</strong> {{ cantidad }} pacientes
+              <strong>Group {{ grupo }}:</strong> {{ cantidad }} patients
             </div>
           </div>
         </div>
 
-        <div class="d-flex flex-wrap justify-content-center align-items-start gap-5 mt-4">
-          <div class="text-center">
-            <h5>Dispersión PCoA por enfermedad</h5>
-            <canvas id="pcoaChart" class="chart-canvas-large" style="max-width: 1000px; max-height: 500px;"></canvas>
+        <div class="row gx-4 gy-4 justify-content-center">
+          <div class="col-md-6 text-center">
+            <h5>PCoA scatterplot by condition</h5>
+            <canvas id="pcoaChart" class="chart-canvas-large" role="img" aria-label="PCoA scatterplot by condition" style="max-width: 1000px; max-height: 500px;"></canvas>
           </div>
-          <div class="text-center">
-            <h5>Dispersión PCoA por grupo</h5>
-            <canvas id="pcoaChartPorGrupo" class="chart-canvas-large" style="max-width: 1000px; max-height: 500px;"></canvas>
+          <div class="col-md-6 text-center">
+            <h5>PCoA scatterplot by group</h5>
+            <canvas id="pcoaChartPorGrupo" class="chart-canvas-large" role="img" aria-label="PCoA scatterplot by group" style="max-width: 1000px; max-height: 500px;"></canvas>
           </div>
         </div>
-
-        <div class="text-center">
-          <h5>Violinplot del índice de Shannon por grupo</h5>
-          <canvas id="shannonViolinplotChart" class="chart-canvas-large" width="700" height="400"></canvas>
+        <div class="row justify-content-center">
+          <div class="col-md-6 text-center">
+            <h5>Shannon diversity index (violin plot) by group</h5>
+            <canvas id="shannonViolinplotChart" role="img" aria-label="Shannon diversity index (violin plot) by group" width="300" height="200"></canvas>
+          </div>
         </div>
-        <h5 class="mt-4">Biomarcadores diferencialmente abundantes entre grupos</h5>
+        <h5 class="mt-4">Differentially abundant biomarkers between groups</h5>
           <table class="table table-sm table-bordered">
             <thead class="table-warning">
               <tr>
-                <th>Microorganismo</th>
-                <th>Grupo 1<br>(% muestras, media ± std)</th>
-                <th>Grupo 2<br>(% muestras, media ± std)</th>
-                <th>p-valor</th>
+                <th>Microorganism</th>
+                <th>Group 1<br>(% samples, mean ± std)</th>
+                <th>Group 2<br>(% samples, mean ± std)</th>
+                <th>p-value</th>
               </tr>
             </thead>
             <tbody>
@@ -165,8 +182,6 @@
               </tr>
             </tbody>
           </table>
-
-
 
 
 
@@ -252,10 +267,10 @@
 
 .chart-canvas-large {
   display: block;
-  max-width: 800px;
-  max-height: 1000px;
-  width:700px !important;
-  height: 400px !important;
+ /* max-width: 800px;
+  max-height: 1000px;*/
+  width:100% !important;
+  height: auto !important;
   margin: 0 auto 2rem;
 }
 
@@ -630,11 +645,16 @@ const abundanciaPorGrupo = ref<any[]>([]);
 async function getAbundanciaPorGrupo(site: string) {
   const mapeo: Record<string, number> = {};
   diseases.forEach(d => {
-    if (d.group > 0) {
+    if (d.group > 0 && myList.value.includes(d.name)) {
       mapeo[d.name] = d.group;
     }
   });
-
+  //Evita que cree grupos que no se han asignado
+  if (Object.keys(mapeo).length === 0) {
+    abundanciaPorGrupo.value = []; // limpiamos el gráfico
+    drawAbundanciaPorGrupoChartFiltrado();
+    return;
+  }
   try {
     const response = await axios.post(`http://localhost:8000/abundancia_por_grupo?site=${site}`, mapeo);
     abundanciaPorGrupo.value = response.data;
@@ -825,6 +845,9 @@ function drawAbundanciaChart() {
   const oldChart = Chart.getChart(ctx);
   if (oldChart) oldChart.destroy();
 
+  
+  // NO DIBUJAR si no hay enfermedades seleccionadas
+  if (myList.value.length === 0) return;
   //const enfermedades = abundanciaData.value.map(d => d.diseases);
   const enfermedades = abundanciaData.value
   .filter(d => myList.value.includes(d.diseases)) //  Filtra aquí
@@ -916,10 +939,12 @@ function drawAbundanciaChart() {
 
 function drawAbundanciaPorGrupoChartFiltrado() {
   const canvas = document.getElementById('abundanciaChartFiltrado') as HTMLCanvasElement;
-  if (!canvas || numGrupos.value === 0 || abundanciaPorGrupo.value.length === 0) return;
+  if (!canvas) return;
 
   const oldChart = Chart.getChart(canvas);
   if (oldChart) oldChart.destroy();
+
+  if (abundanciaPorGrupo.value.length === 0) return; // destruye antes de salir
 
   const keys = Object.keys(abundanciaPorGrupo.value[0] || {}).filter(k => k.startsWith("x"));
 
@@ -1074,6 +1099,9 @@ watch(shannonViolinData, async (newData) => {
  */
 watch(numGrupos, async () => {
   await nextTick();
+  if (selectedSite.value && numGrupos.value > 0) {
+    await getAbundanciaPorGrupo(selectedSite.value);
+  }
   if (abundanciaData.value.length > 0) {
     drawAbundanciaPorGrupoChartFiltrado();
   }
@@ -1182,5 +1210,39 @@ function check()  {
 
 }
 
+function resetSelections() {
+  // Deseleccionar todas las enfermedades
+  myList.value = [];
+
+  // Resetear todos los grupos
+  diseases.forEach(d => d.group = 0);
+  numGrupos.value = 0;
+
+  // Desmarcar todos los site manualmente
+  const radios = document.querySelectorAll('input[type="radio"][name="radioButton"]');
+  radios.forEach((radio) => {
+    (radio as HTMLInputElement).checked = false;
+  });
+
+  // Resetear dataset visualizado
+  originalItems.value = [];
+  items.value = [];
+  patiens.value = 0;
+
+    // Limpiar gráficos generales
+    drawAbundanciaChart();
+  drawPCoAChart();
+
+  // Limpiar gráficos por grupo
+  abundanciaPorGrupo.value = [];
+  drawAbundanciaPorGrupoChartFiltrado();
+
+  const canvasGrupo = document.getElementById('pcoaChartPorGrupo') as HTMLCanvasElement;
+  if (canvasGrupo && Chart.getChart(canvasGrupo)) {
+    Chart.getChart(canvasGrupo)?.destroy();
+  }
+
+  biomarcadores.value = [];
+}
 
 </script>

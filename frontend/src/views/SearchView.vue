@@ -16,7 +16,7 @@
       <input
         type="text"
         v-model="selectedBacteriaInput"
-        placeholder="Buscar bacteria..."
+        placeholder="Search for bacteria.."
         @input="updateFilteredBacteria"
         class="styled-search-input"
       />
@@ -34,7 +34,7 @@
     </div>
 
     <select v-model="selectedSite" class="styled-search-input">
-      <option disabled value="">Selecciona un sitio anatómico</option>
+      <option disabled value="">Select a body site</option>
       <option v-for="site in sites" :key="site" :value="site">
         {{ site }}
       </option>
@@ -86,9 +86,18 @@ const abundanciaData = ref<any[]>([]); // Guarda el resultado del backend
 
 const allBacteria = ref<string[]>([]);
 const bacteriaToX = ref<Record<string, string>>({});
-// Cargar mother al montar el componente
 
 
+
+/**
+ * @brief Carga la información de referencia de las bacterias al montar el componente.
+ * 
+ * Al iniciar la vista, se hace una petición al backend para obtener la tabla `mother`,
+ * que contiene los identificadores internos (tipo "x1", "x2"...) y sus géneros asociados.
+ * A partir de eso, se construye un mapa para poder buscar fácilmente el identificador
+ * de una bacteria por su nombre (por ejemplo, "Lactobacillus" → "x17").
+ * 
+ */
 onMounted(async () => {
   const response = await axios.get(`${import.meta.env.VITE_API_URL}data/mother`);
   const mother = response.data;
@@ -145,10 +154,8 @@ async function getAbundancia(bacteria: string, site: string) {
         site: site
       }
     });
-    console.log(' Respuesta del backend:', response.data); 
 
     abundanciaData.value = response.data;
-    console.log('Abundancia recibida:', abundanciaData.value);
   } catch (error) {
     console.error('Error al obtener abundancia:', error);
     abundanciaData.value = [];

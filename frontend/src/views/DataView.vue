@@ -10,8 +10,9 @@
                   class="form-check-input me-1"
                   type="checkbox"
                   :checked="isChecked"
-                  id="inputProject"
+                  id="inputGenus"
                   />
+                  <label for="inputGenus">Genus</label>
               Genus
             </li>
             <li class="list-group-item ">
@@ -19,6 +20,7 @@
                   class="form-check-input me-1"
                   type="checkbox"
                   disabled
+                  aria-label="Species checkbox (disabled)"
                   />
               Species
             </li>
@@ -38,7 +40,8 @@
                     name="radioButton"
                     @click="loadData('cervix')"
                     />
-                Cervix<span class="badge badge-pill bg-secondary float-end"> 82 </span>
+                    <label for="inputCervix">Cervix</label>
+                <span class="badge badge-pill bg-secondary float-end"> 82 </span>
               </li>
               <li class="list-group-item align-items-center">
                 <input
@@ -48,7 +51,8 @@
                     name="radioButton"
                     @click="loadData('uterus')"
                     />
-                Uterus<span class="badge badge-pill bg-secondary float-end"> 79 </span>
+                    <label for="inputUterus">Uterus</label>
+                <span class="badge badge-pill bg-secondary float-end"> 79 </span>
 
               </li>
               <li class="list-group-item align-items-center">
@@ -59,7 +63,8 @@
                     name="radioButton"
                     @click="loadData('rectum')"
                     />
-                Rectum<span class="badge badge-pill bg-secondary float-end"> 89 </span>
+                    <label for="inputRectum">Rectum</label>
+                <span class="badge badge-pill bg-secondary float-end"> 89 </span>
 
               </li>
               <li class="list-group-item align-items-center">
@@ -70,7 +75,8 @@
                     name="radioButton"
                     @click="loadData('vagina')"
                     />
-                Vagina<span class="badge badge-pill bg-secondary float-end"> 89 </span>
+                    <label for="inputVagina">Vagina</label>
+                <span class="badge badge-pill bg-secondary float-end"> 89 </span>
 
               </li>
               <li class="list-group-item align-items-center">
@@ -81,7 +87,8 @@
                     name="radioButton"
                     @click="loadData('orine')"
                     />
-                Urine<span class="badge badge-pill bg-secondary float-end"> 86 </span>
+                    <label for="inputOrine">Urine</label>
+                <span class="badge badge-pill bg-secondary float-end"> 86 </span>
 
               </li>
           </ul>
@@ -185,11 +192,11 @@
 <nav aria-label="Page navigation example">
   <ul class="pagination justify-content-center">
     <li class="page-item"  :class="{ 'disabled': pagina === 1 }" v-if="patiens">
-      <a class="page-link" href="#"  @click="cambiarPagina(pagina-1)">Previous</a>
+      <a class="page-link" href="#"  @click="cambiarPagina(pagina-1)"  aria-label="Página anterior">Previous</a>
     </li>
-    <li v-for="i in modulo" :key="i" class="page-item " :class="{ 'active': i === pagina }" @click="cambiarPagina(i)"><a class="page-link" href="#">{{ i }}</a></li>
+    <li v-for="i in modulo" :key="i" class="page-item " :class="{ 'active': i === pagina }" @click="cambiarPagina(i)" :aria-label="'Ir a la página ' + i"><a class="page-link" href="#">{{ i }}</a></li>
     <li class="page-item">
-      <a class="page-link" v-if="patiens" :class="{ 'disabled': pagina === modulo }" href="#" @click="cambiarPagina(pagina+1)">Next</a>
+      <a class="page-link" v-if="patiens" :class="{ 'disabled': pagina === modulo }" href="#" @click="cambiarPagina(pagina+1)" aria-label="Página siguiente" >Next</a>
     </li>
   </ul>
 </nav>
