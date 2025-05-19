@@ -3,7 +3,7 @@
  *
  * Este componente muestra una interfaz analítica para explorar datos microbiológicos. Incluye:
  * - Filtros por tipo de muestra (site) y condición médica (disease)
- * - Visualización de índices de diversidad (Shannon) mediante boxplot
+ * - Visualización de índices de diversidad (Shannon) mediante violinplot
  * - Tabla de valores por muestra
  * - Resumen estadístico por condición
  * - Gráfico de barras apiladas con abundancia relativa por género microbiano
@@ -139,7 +139,12 @@
             <canvas id="shannonViolinplotChart" role="img" aria-label="Shannon diversity index (violin plot) by group" width="300" height="200"></canvas>
           </div>
         </div>
-        <h5 class="mt-4">Differentially abundant biomarkers between groups</h5>
+        <div class="col-md-6 text-center">
+          <h5>Richness index by group</h5>
+          <canvas id="richnessChart" role="img" aria-label="Richness index by group"></canvas>
+        </div>
+
+        <h5 class="mt-4">Differentially abundant biomarkers between groups (Mann–Whitney U test)</h5>
           <table class="table table-sm table-bordered">
             <thead class="table-warning">
               <tr>
@@ -340,6 +345,9 @@ const mother = ref({})
 const shannonResults = ref<any[]>([]);
 const shannonSummary = ref<any[]>([]);
 const abundanciaData = ref<any[]>([]);
+//Gráfico de riqueza
+const richnessPorGrupo = ref<any[]>([]);
+
 // Beta diversity
 const betaResults = ref<any[]>([]);
 const selectedSite = ref("");  // para recordar el site seleccionado
@@ -378,6 +386,18 @@ const colores = [
   '#16a085'  // verde azulado
 ];
 
+const coloresPorGrupos: Record<number,string>={
+  1: '#66c2a5', //verde agua
+  2: '#fc8d62',  // salmón
+  3: '#8da0cb',  // azul lavanda
+  4: '#e78ac3'   // rosa fucsia
+}
+const coloresPorGruposTransparente: Record<number,string> = {
+  1: 'rgba(102,194,165,0.4)', // verde agua
+  2: 'rgba(252,141,98,0.4)',  // salmón
+  3: 'rgba(141,160,203,0.4)', // azul lavanda
+  4: 'rgba(231,138,195,0.4)'  // rosa fucsia
+}
 let colorMap: Record<string, string> = {};
 
 //Datos computados para construir boxplot por grupo
@@ -395,7 +415,15 @@ const shannonViolinData = computed(() => {
     datasets: [
       {
         label: 'Índice de Shannon',
-        data: Object.values(groups).map(g => getShannonForGroup(g))
+        data: Object.values(groups).map(g => getShannonForGroup(g)),
+        backgroundColor: Object.keys(groups).map(g => coloresPorGruposTransparente[parseInt(g)]),
+        itemBackgroundColor: Object.keys(groups).map(g => coloresPorGrupos[parseInt(g)]),
+        borderColor: Object.keys(groups).map(g => coloresPorGrupos[parseInt(g)]),
+        borderWidth: 1,
+        outlierRadius: 4,
+        itemRadius: 3,
+        padding: 10
+        
       }
     ]
   };
@@ -517,11 +545,13 @@ function countCases(site: string) {
       getShannonDiversity(site)
       getAbundanciaData(site)
       getBetaDiversity(site)
+      getRichnessPorGrupo(site);
 
       //  Esperamos a que se actualicen los grupos antes de enviar biomarcadores
       await nextTick()
       if (numGrupos.value > 0 && selectedSite.value) {
         getAbundanciaPorGrupo(selectedSite.value);
+
       }
 
 
@@ -559,6 +589,37 @@ async function getShannonDiversity(site: string) {
     console.error("Error al obtener índice de Shannon:", error);
   }
 }
+
+/**
+ * @brief Obtiene los datos del backend para el gráfico de riqueza 
+ * @param site El sitio del cuerpo para el cual se quiere obtener la abundancia
+
+*/ 
+async function getRichnessPorGrupo(site: string) {
+  if (numGrupos.value < 1) {
+    richnessPorGrupo.value = [];
+    return;
+  }
+
+  const mapeo: Record<string, number> = {};
+  diseases.forEach(d => {
+    if (d.group > 0 && myList.value.includes(d.name)) {
+      mapeo[d.name] = d.group;
+    }
+  });
+
+  try {
+    const response = await axios.post(`http://localhost:8000/richness?site=${site}`, mapeo);
+    richnessPorGrupo.value = response.data;
+    console.log("Richness recibido del backend:", richnessPorGrupo.value);
+
+    drawRichnessChart();
+  } catch (error) {
+    console.error("Error al obtener índice de riqueza:", error);
+    richnessPorGrupo.value = [];
+  }
+}
+
 
 /**
  * @brief Obtiene del backend los datos de abundancia relativa por enfermedad y genera su gráfica
@@ -796,7 +857,7 @@ function drawPCoAChartPorGrupo() {
   const datasets = Object.keys(grupos).map((g, i) => ({
     label: `Grupo ${g}`,
     data: grupos[Number(g)],
-    backgroundColor: colores[i % colores.length],
+    backgroundColor: coloresPorGrupos[parseInt(g)] || '#000000',
     pointRadius: 7,
     pointHoverRadius: 10,
     pointHitRadius: 10, // mejora la detección del ratón
@@ -838,6 +899,8 @@ function drawPCoAChartPorGrupo() {
  * @brief Renderiza el gráfico de barras apiladas con la abundancia relativa de los géneros microbianos
  */
 function drawAbundanciaChart() {
+  if (!abundanciaData.value || abundanciaData.value.length === 0) return;
+
   const ctx = document.getElementById('abundanciaChart') as HTMLCanvasElement;
   if (!ctx) return;
 
@@ -1031,6 +1094,65 @@ function drawAbundanciaPorGrupoChartFiltrado() {
   });
 }
 
+function drawRichnessChart() {
+  const canvas = document.getElementById('richnessChart') as HTMLCanvasElement;
+  if (!canvas) return;
+
+  const oldChart = Chart.getChart(canvas);
+  if (oldChart) oldChart.destroy();
+
+  // Claves numéricas para que el color se asigne bien
+  const grupos: Record<number, number[]> = {};
+  richnessPorGrupo.value.forEach(fila => {
+    const grupo = fila.grupo;
+    if (!grupos[grupo]) grupos[grupo] = [];
+    grupos[grupo].push(...fila.richness);
+  });
+
+  const labels = Object.keys(grupos).map(g => `Grupo ${g}`);
+  const data = Object.values(grupos);
+  const coloresG = Object.keys(grupos).map(g => coloresPorGrupos[parseInt(g)] || '#cccccc');
+  const coloresTransparentes = Object.keys(grupos).map(g => coloresPorGruposTransparente[parseInt(g)] || 'rgba(200,200,200,0.4)');
+
+  new Chart(canvas, {
+    type: 'boxplot',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Richness (Number of genera)',
+        data: data,
+        backgroundColor: coloresTransparentes,
+        itemBackgroundColor: coloresG,
+        borderColor: coloresG,
+        borderWidth: 1,
+        outlierRadius: 4,
+        itemRadius: 3,
+        padding: 10
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Richness index by group'
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Number of genera'
+          }
+        }
+      }
+    }
+  });
+}
+
+
+
 
 
 
@@ -1119,6 +1241,7 @@ watch(
     if (numGrupos.value > 0) {
       if (selectedSite.value) {
         await getAbundanciaPorGrupo(selectedSite.value); // Cargar datos antes de pintar
+        await getRichnessPorGrupo(selectedSite.value);
       }
       drawAbundanciaPorGrupoChartFiltrado();
       drawPCoAChartPorGrupo();

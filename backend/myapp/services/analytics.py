@@ -3,6 +3,7 @@ import pandas as pd
 from skbio.diversity.alpha import shannon
 from skbio.diversity import beta_diversity
 from skbio.stats.ordination import pcoa
+
 ##
 #   Carga los datos de abundancia microbiana desde la base de datos PostgreSQL.
 #   @param site: Nombre del sitio anatómico (por ejemplo, 'cervix', 'vagina', etc.)
@@ -41,10 +42,36 @@ def calcular_shannon_por_site(site: str):
     abundancias = df.filter(regex='^x')
     df['shannon'] = abundancias.apply(shannon, axis=1)
 
+
     resumen_muestra = df[['sample_id', 'diseases', 'shannon']]
     resumen_enfermedad = df.groupby('diseases')['shannon'].agg(['mean', 'std', 'count']).reset_index()
 
     return resumen_muestra, resumen_enfermedad
+##
+# Calcula la riqueza
+#
+def calcular_richness(site: str, mapeo_enfermedad_a_grupo: dict):
+    conn = psycopg2.connect(
+        dbname="postgres",
+        user="postgres",
+        password="postgres",
+        host="localhost",
+        port="5432"
+    )
+    query = f"SELECT * FROM {site};"
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+
+    df["grupo"] = df["diseases"].map(mapeo_enfermedad_a_grupo)
+    df = df[df["grupo"].notna()]
+
+    micro_cols = [col for col in df.columns if col.startswith("x")]
+    df["richness"] = df[micro_cols].apply(lambda row: (row > 0).sum(), axis=1)
+
+    resultado = df.groupby("grupo")["richness"].apply(list).reset_index()
+
+    return resultado.to_dict(orient="records")
+
 
 ##
 # Calcula la abundancia media por enfermedad en un sitio anatómico

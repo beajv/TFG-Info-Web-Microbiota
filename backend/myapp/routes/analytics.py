@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from myapp.services.analytics import calcular_shannon_por_site
 from myapp.services.analytics import calcular_beta_diversity
 from myapp.services.analytics import cargar_abundancias
+from myapp.services.analytics import calcular_richness
 """No lo he podido usar porque necesita que ambos grupos tengan mismo
 numero de muestras y dado que esto iba a resultar dificil he opctado por Mann-Whitney U"""
 from scipy.stats import wilcoxon 
@@ -79,6 +80,21 @@ def calcular_shannon(site: str = Query(...)):
     except Exception as e:
         print(" ERROR en /shannon:", str(e))  
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+"""
+    Calcula la riqueza
+"""
+
+@router.post("/richness")
+def calcular_richness_endpoint(site: str = Query(...), grupos: dict = Body(...)):
+    try:
+        resultado = calcular_richness(site, grupos)
+        return resultado
+    except Exception as e:
+        print("Error en /richness:", str(e))
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
 
 """
     Calcula la diversidad beta (distancia de Bray-Curtis) y aplica PCoA para visualización 2D.
