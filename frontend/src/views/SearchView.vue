@@ -164,7 +164,6 @@ async function getAbundancia(bacteria: string, site: string) {
 
 watch(selectedSite, async (newSite) => {
   if (selectedBacteria.value && newSite) {
-    console.log("Site cambiado, llamando a getAbundancia...");
     await getAbundancia(selectedBacteria.value, newSite);
   }
 });

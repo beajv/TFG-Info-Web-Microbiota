@@ -20,7 +20,7 @@ from myapp.services.analytics import calcular_abundancias_por_disease
 from myapp.routes import search
 from myapp.routes import summary
 
-
+import math
 #Inicializa las tablas si no existen
 models.Base.metadata.create_all(bind=engine)
 
@@ -123,20 +123,30 @@ async def data(table: str, db: Session = Depends(get_db) ):
       query = text(f"SELECT * FROM {table}")
       result = db.execute(query)
       column_names = result.keys()
-      items = [dict(zip(column_names, row)) for row in result.fetchall()]
-    else:
-      query = text(f"SELECT * FROM mother")
-      result = db.execute(query)
-      column_names = result.keys()
-      items = [dict(zip(column_names, row)) for row in result.fetchall()]
-      items_mother = {}
+      
+      def limpiar_nan(obj):
+        return {k: (v if not isinstance(v, float) or not math.isnan(v) else None) for k, v in obj.items()}
 
-      # Iterar sobre la lista original
-      for item in items:
-          index = item['index']
-          values = [ item['family'], item['genero'], item['ena'], item['nhi'] ]
-          items_mother[index] = values
-      items = items_mother
+      items = [limpiar_nan(dict(zip(column_names, row))) for row in result.fetchall()]
+
+    else:
+        query = text("SELECT * FROM mother")
+        result = db.execute(query)
+        items_mother = {}
+        for row in result.fetchall():
+            item = dict(zip(result.keys(), row))
+            codigo = item.get("codigo")
+            values = [
+                item.get("nombre_microorganismo", ""),        # [0] - nombre taxonómico original
+                item.get("nombre_limpio", ""),  # [1] - nombre limpio que muestra en frontend
+                item.get("ena_id", ""),
+                item.get("ncbi_id", "")
+            ]
+            if codigo:
+                items_mother[codigo] = values
+        items = items_mother
+
+
 
     return items
 

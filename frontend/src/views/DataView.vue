@@ -41,7 +41,7 @@
                     @click="loadData('cervix')"
                     />
                     <label for="inputCervix">Cervix</label>
-                <span class="badge badge-pill bg-secondary float-end"> 82 </span>
+                <span class="badge badge-pill bg-secondary float-end"> {{ siteCounts.cervix }}</span>
               </li>
               <li class="list-group-item align-items-center">
                 <input
@@ -52,7 +52,7 @@
                     @click="loadData('uterus')"
                     />
                     <label for="inputUterus">Uterus</label>
-                <span class="badge badge-pill bg-secondary float-end"> 79 </span>
+                <span class="badge badge-pill bg-secondary float-end"> {{ siteCounts.uterus }} </span>
 
               </li>
               <li class="list-group-item align-items-center">
@@ -64,7 +64,7 @@
                     @click="loadData('rectum')"
                     />
                     <label for="inputRectum">Rectum</label>
-                <span class="badge badge-pill bg-secondary float-end"> 89 </span>
+                <span class="badge badge-pill bg-secondary float-end"> {{ siteCounts.rectum }} </span>
 
               </li>
               <li class="list-group-item align-items-center">
@@ -76,7 +76,7 @@
                     @click="loadData('vagina')"
                     />
                     <label for="inputVagina">Vagina</label>
-                <span class="badge badge-pill bg-secondary float-end"> 89 </span>
+                <span class="badge badge-pill bg-secondary float-end"> {{ siteCounts.vagina }} </span>
 
               </li>
               <li class="list-group-item align-items-center">
@@ -88,7 +88,7 @@
                     @click="loadData('orine')"
                     />
                     <label for="inputOrine">Urine</label>
-                <span class="badge badge-pill bg-secondary float-end"> 86 </span>
+                <span class="badge badge-pill bg-secondary float-end"> {{ siteCounts.orine }} </span>
 
               </li>
           </ul>
@@ -135,7 +135,16 @@
           </thead>
           <tbody>
             <tr v-for="(item) in resultItems" >
-<td>{{ (mother as MotherType)[item.name.toUpperCase()][1] }}</td>
+<td>
+  {{
+    (() => {
+      const micro = item.name;
+      const data = (mother as MotherType)[micro];
+      return data && data[1] ? data[1] : micro;
+    })()
+  }}
+</td>
+
 <!-- OPCION 1-->
 <!--
 <td>
@@ -163,7 +172,7 @@
 
 <td>
     <a
-    :href="'https://www.ebi.ac.uk/ena/browser/view/Taxon:' + (mother as MotherType)[item.name.toUpperCase()][2]"
+    :href="'https://www.ebi.ac.uk/ena/browser/view/Taxon:' + (mother as MotherType)[item.name][2]"
     target="_blank"
     rel="noopener noreferrer"
     class="btn btn-sm btn-outline-success"
@@ -174,7 +183,7 @@
 </td>
 <td>
   <a
-    :href="'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=' + (mother as MotherType)[item.name.toUpperCase()][3]"
+    :href="'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=' + (mother as MotherType)[item.name][3]"
     target="_blank"
     rel="noopener noreferrer"
     class="btn btn-sm btn-outline-primary"
@@ -231,7 +240,7 @@
 </style>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted , watch, nextTick} from 'vue'
 import axios from 'axios'
 import { useRoute } from 'vue-router';
 const route = useRoute();
@@ -268,6 +277,15 @@ const numUNEXPLAINED = ref(0)
 
 const isChecked = ref(true)
 const mother = ref({})
+
+const siteCounts = ref<{ [key: string]: number }>({
+  cervix: 0,
+  uterus: 0,
+  rectum: 0,
+  vagina: 0,
+  orine: 0
+});
+
 
 
 function cambiarPagina(pagina_click : number){
@@ -310,63 +328,69 @@ function calculateStandardDeviation(numbers : number[]) {
   return standardDeviation.toFixed(2); // Redondear a tres decimales
 }
 
-function countDistinctValues(list : number[]) {
-  // Use a Set to store distinct values
-  var distinctValues = new Set();
-
-  // Iterate through the list and add values distinct from 0 or -1 to the Set
-  for (var i = 0; i < list.length; i++) {
-    if (list[i] !== 0 && list[i] !== -1) {
-      distinctValues.add(list[i]);
-    }
-  }
-
-  // Return the count of distinct values found
-  return distinctValues.size;
+function countSamplesWithMicrobe(list: number[]) {
+  return list.filter(v => v && v > 0).length;
 }
 
 function calculateValues() {
-      resultItems.value = [] 
-      if (patiens.value !== 0) {
-      var resultItemsCalculated: any[] = []; 
+  resultItems.value = [];
+  if (patiens.value === 0 || items.value.length === 0) {
+    console.warn("No hay pacientes o items para calcular.");
+    return;
+  }
 
-      const keysStartingWithX = Object.keys(items.value[0]).filter(key => key.startsWith('x'));
-      keysStartingWithX.map(item=> {
-         if( (mother.value as MotherType)[ item.toUpperCase() ][1] ){ 
+  var resultItemsCalculated: any[] = [];
 
-         var values_for_item: any[] = [];
-         for( var i = 0; i < items.value.length; i++){
-            values_for_item.push(items.value[i][item])
-         }
-         var average = (values_for_item.map(num => num).reduce((accumulator, currentValue) => accumulator + currentValue, 0) / values_for_item.length).toFixed(2);
+  const keysStartingWithX = Object.keys(items.value[0] || {}).filter(key => key.toLowerCase().startsWith('x'));
 
-         var median = calculateMedian(values_for_item)
-         var stdDeviation = calculateStandardDeviation(values_for_item)           
+  keysStartingWithX.map(item => {
+    const key = item;
+    const motherEntry = (mother.value as MotherType)[key];
 
-         var count = countDistinctValues(values_for_item)
+    if (!motherEntry) {
+      console.warn(` Clave '${key}' no encontrada en mother`);
+      return;
+    }
 
-         var dic = { 
-            name: item,
-            count: count,
-            countComplete: count + " (" + ((count/patiens.value) * 100).toFixed(2) + "%)",
-            relative: average + "%, " +  median + "%, " + stdDeviation + "%"
-         }
-         
-         resultItemsCalculated.push(dic) 
+    if (!motherEntry[1]) {
+      console.warn(`Clave '${key}' encontrada, pero no tiene valor en [1]`);
+      return;
+    }
+    if (motherEntry && motherEntry[1]) {
+      var values_for_item = items.value
+        .map(it => it[item])
+        .filter(val => typeof val === 'number' && !isNaN(val));
 
-         }
+      var average = (
+        values_for_item.reduce((acc, val) => acc + val, 0) / values_for_item.length
+      ).toFixed(2);
 
-      })
-      
-      var resultItemsTmp = resultItemsCalculated.sort((a, b) => b.count - a.count);  
-      modulo.value = Math.floor(resultItemsTmp.length / 20) + 1
-      var inicio = (pagina.value - 1) * 20
-      var fin = pagina.value * 20
+      var median = calculateMedian(values_for_item);
+      var stdDeviation = calculateStandardDeviation(values_for_item);
+      var count = countSamplesWithMicrobe(values_for_item);
 
-      resultItems.value =  resultItemsTmp.slice(inicio, fin)
-      
-      }
+
+      var dic = {
+        name: item,
+        count: count,
+        countComplete: count + " (" + ((count / patiens.value) * 100).toFixed(2) + "%)",
+        relative: average + "%, " + median + "%, " + stdDeviation + "%"
+      };
+
+      resultItemsCalculated.push(dic);
+    }
+  });
+
+  var resultItemsTmp = resultItemsCalculated.sort((a, b) => b.count - a.count);
+  modulo.value = Math.floor(resultItemsTmp.length / 20) + 1;
+  var inicio = (pagina.value - 1) * 20;
+  var fin = pagina.value * 20;
+
+  resultItems.value = resultItemsTmp.slice(inicio, fin);
+
+
 }
+
 
 
 function countCases(site: string) {
@@ -374,41 +398,66 @@ function countCases(site: string) {
   return filtrados.length
 }
 
-function loadData(site: string){
-
-  originalItems.value = []
-  updateItems()
-  axios
-    .get(import.meta.env.VITE_API_URL +'data/'+ site)
-    .then((response) => {
-
-      originalItems.value = response.data
-      myList.value = ['RM', 'MALE_FACTOR', 'TUBAL_FACTOR', 'ENDOMETRIOSIS', 'ENDOMETRITIS', 'MIOMA', 'RIF', 'UNEXPLAINED'] 
-      numRM.value = countCases('RM')
-      numMALE_FACTOR.value = countCases('MALE_FACTOR')
-      numTUBAL_FACTOR.value = countCases('TUBAL_FACTOR')
-      numENDOMETRIOSIS.value = countCases('ENDOMETRIOSIS')
-      numENDOMETRITIS.value = countCases('ENDOMETRITIS')
-      numMIOMA.value = countCases('MIOMA')
-      numRIF.value = countCases('RIF')
-      numUNEXPLAINED.value = countCases('UNEXPLAINED')
-      updateItems()
-
-
-      const inputs = document.querySelectorAll('.disease-check');
-      inputs.forEach((elem) => {
-           (elem as HTMLInputElement).checked = true
-      });
-      
-      
-    })
-    .catch((error) => {
-      console.error('Error:', error)
-    })
-    cambiarPagina(1)
+async function contarTodosLosSitios() {
+  const sitios = ['cervix', 'uterus', 'rectum', 'vagina', 'orine'];
+  for (const sitio of sitios) {
+    try {
+      const response = await axios.get(import.meta.env.VITE_API_URL + 'data/' + sitio);
+      siteCounts.value[sitio] = response.data.length;
+    } catch (error) {
+      console.warn(`Error al contar muestras en ${sitio}:`, error);
+      siteCounts.value[sitio] = 0;
+    }
+  }
 }
 
+
+async function loadData(site: string) {
+  originalItems.value = [];  // reset inicial
+  patiens.value = 0;
+  items.value = [];
+  resultItems.value = [];
+
+  try {
+    const response = await axios.get(import.meta.env.VITE_API_URL + 'data/' + site);
+
+    originalItems.value = response.data.map(item => ({
+      ...item,
+      diseases: Array.isArray(item.diseases)
+        ? item.diseases.map((d: string) => d.trim())
+        : item.diseases?.trim()
+    }));
+
+    // Actualizar conteo dinámico del sitio actual
+    siteCounts.value[site] = originalItems.value.length;
+
+    myList.value = ['RM', 'MALE_FACTOR', 'TUBAL_FACTOR', 'ENDOMETRIOSIS', 'ENDOMETRITIS', 'MIOMA', 'RIF', 'UNEXPLAINED'];
+    await nextTick();
+    numRM.value = countCases('RM');
+    numMALE_FACTOR.value = countCases('MALE_FACTOR');
+    numTUBAL_FACTOR.value = countCases('TUBAL_FACTOR');
+    numENDOMETRIOSIS.value = countCases('ENDOMETRIOSIS');
+    numENDOMETRITIS.value = countCases('ENDOMETRITIS');
+    numMIOMA.value = countCases('MIOMA');
+    numRIF.value = countCases('RIF');
+    numUNEXPLAINED.value = countCases('UNEXPLAINED');
+
+    const checks = document.querySelectorAll('.disease-check');
+    checks.forEach((elem) => {
+      (elem as HTMLInputElement).checked = true;
+    });
+
+    updateItems();
+    cambiarPagina(1);
+
+  } catch (error) {
+    console.error('Error al cargar datos:', error);
+  }
+}
+
+
 onMounted(() => {
+
   axios
     .get(import.meta.env.VITE_API_URL + 'data/all')
     .then((response) => {
@@ -420,21 +469,30 @@ onMounted(() => {
     .catch((error) => {
       console.error('Error:', error)
     })
-
+    contarTodosLosSitios()
 })
 
 
-
 function updateItems() {
-  items.value = originalItems.value.filter((item) => myList.value.includes(item.diseases))
-  patiens.value = items.value.length
-  calculateValues()
+
+  items.value = originalItems.value.filter((item) => {
+    const enfermedades = Array.isArray(item.diseases)
+      ? item.diseases.map((d: string) => d.trim())
+      : [item.diseases?.trim()];
+    
+    return enfermedades.some((d: string) => myList.value.includes(d));
+  });
+
+  patiens.value = items.value.length;
+
+  calculateValues();
 }
+
+
 
 function filterDisease(disease: string) {
   
   var index = myList.value.indexOf(disease)
-  console.log(index)
   if (index == -1) {
     myList.value.push(disease)
   } else {

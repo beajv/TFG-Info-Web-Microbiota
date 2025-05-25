@@ -30,13 +30,11 @@ def get_summary(db: Session = Depends(get_db)):
     for site in sites:
         if site == "mother":
             continue
-        result = db.execute(
-            text(f"""
-                SELECT DISTINCT diseases 
-                FROM {site}
-                WHERE diseases NOT IN ('SOP', 'ARTERIOVENOUS_MALFORMATION', 'UNEXPLAINED')
-            """)
-        )
+        result = db.execute(text(f"""
+            SELECT DISTINCT diseases 
+            FROM {site}
+            WHERE diseases  IS NOT NULL 
+        """))
         conditions.update([row[0] for row in result if row[0]])
 
     summary["conditions"] = len(conditions)

@@ -26,23 +26,23 @@
             <li class="list-group-item custom-header d-flex justify-content-between align-items-center">Site</li>
             <li class="list-group-item align-items-center">
               <input class="form-check-input me-1 inputCervix" type="radio" id="inputCervix" name="radioButton" @click="loadData('cervix')" />
-              Cervix<span class="badge badge-pill bg-secondary float-end">82</span>
+              Cervix<span class="badge badge-pill bg-secondary float-end">{{ siteCounts.cervix }}</span>
             </li>
             <li class="list-group-item align-items-center">
               <input class="form-check-input me-1 inputUterus" type="radio" id="inputUterus" name="radioButton" @click="loadData('uterus')" />
-              Uterus<span class="badge badge-pill bg-secondary float-end">79</span>
+              Uterus<span class="badge badge-pill bg-secondary float-end">{{ siteCounts.uterus }}</span>
             </li>
             <li class="list-group-item align-items-center">
               <input class="form-check-input me-1 inputRectum" type="radio" id="inputRectum" name="radioButton" @click="loadData('rectum')" />
-              Rectum<span class="badge badge-pill bg-secondary float-end">89</span>
+              Rectum<span class="badge badge-pill bg-secondary float-end">{{ siteCounts.rectum }}</span>
             </li>
             <li class="list-group-item align-items-center">
               <input class="form-check-input me-1 inputVagina" type="radio" id="inputVagina" name="radioButton" @click="loadData('vagina')" />
-              Vagina<span class="badge badge-pill bg-secondary float-end">89</span>
+              Vagina<span class="badge badge-pill bg-secondary float-end">{{ siteCounts.vagina }}</span>
             </li>
             <li class="list-group-item align-items-center">
               <input class="form-check-input me-1 inputOrine" type="radio" id="inputOrine" name="radioButton" @click="loadData('orine')" />
-              Urine<span class="badge badge-pill bg-secondary float-end">86</span>
+              Urine<span class="badge badge-pill bg-secondary float-end">{{ siteCounts.orine }}</span>
             </li>
           </ul>
 
@@ -138,11 +138,12 @@
             <h5>Shannon diversity index (violin plot) by group</h5>
             <canvas id="shannonViolinplotChart" role="img" aria-label="Shannon diversity index (violin plot) by group" width="300" height="200"></canvas>
           </div>
+          <div class="col-md-6 text-center">
+            <h5>Richness index by group</h5>
+            <canvas id="richnessChart" role="img" aria-label="Richness index by group" width="300" height="200"></canvas>
+          </div>
         </div>
-        <div class="col-md-6 text-center">
-          <h5>Richness index by group</h5>
-          <canvas id="richnessChart" role="img" aria-label="Richness index by group"></canvas>
-        </div>
+        
 
         <h5 class="mt-4">Differentially abundant biomarkers between groups (Mann–Whitney U test)</h5>
           <table class="table table-sm table-bordered">
@@ -161,70 +162,19 @@
                   :class="{ 'fila-significativa': esSignificativo(row.p_value) }"
                 >
 
-                <td>
-                  {{
-                    (() => {
-                      const entry = mother[row.micro.toUpperCase()];
-                      if (entry) {
-                        const name1 = (entry[1] || '').trim(); // género
-                        const name0 = (entry[0] || '').trim(); // familia
-                        return name1 !== '' ? name1 : (name0 !== '' ? name0 : row.micro);
-                      }
-                      return row.micro;
-                    })()
-                  }}
+                <td>{{ row.nombre_limpio || row.micro }}</td>
+
+               <td>
+                  {{ row.n_g1 }}/{{ row.total_g1 }} muestras,
+                  {{ ((row.n_g1 / row.total_g1) * 100).toFixed(2) }} % <br>
+                  {{ row.mean_g1 != null ? row.mean_g1.toFixed(2) : '—' }} ± {{ row.std_g1 != null ? row.std_g1.toFixed(2) : '—' }}
                 </td>
                 <td>
-                  {{ row.n_g1 }}/{{ row.n_g1+row.n_g2}} muestras,
-                  {{ Math.round((row.n_g1/(row.n_g1+row.n_g2))*100) }} % <br>
-                  {{ row.mean_g1.toFixed(2) }} ± {{ row.std_g1.toFixed(2) }}
+                  {{ row.n_g2 }}/{{ row.total_g2 }} muestras,
+                  {{ ((row.n_g2 / row.total_g2) * 100).toFixed(2) }} % <br>
+                  {{ row.mean_g2 != null ? row.mean_g2.toFixed(2) : '—' }} ± {{ row.std_g2 != null ? row.std_g2.toFixed(2) : '—' }}
                 </td>
-                <td>
-                  {{ row.n_g2 }}/{{ row.n_g1+row.n_g2}} muestras,
-                  {{ Math.round((row.n_g2/(row.n_g1+row.n_g2))*100) }} % <br>
-                  {{ row.mean_g2.toFixed(2) }} ± {{ row.std_g2.toFixed(2) }}</td>
                 <td>{{ row.p_value ? row.p_value.toExponential(2) : '—' }}</td>
-              </tr>
-            </tbody>
-          </table>
-
-
-
-        <!--Opcional para ver los datos -->
-          <h5>Índice de Shannon por muestra</h5>
-          <table class="table table-sm table-striped">
-            <thead>
-              <tr>
-                <th>Muestra</th>
-                <th>Condition</th>
-                <th>Shannon</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in filteredShannonResults" :key="row.sample_id">
-                <td>{{ row.sample_id }}</td>
-                <td>{{ row.diseases }}</td>
-                <td>{{ row.shannon.toFixed(4) }}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <h5 class="mt-4">Resumen por enfermedad</h5>
-          <table class="table table-sm table-bordered">
-            <thead>
-              <tr>
-                <th>Enfermedad</th>
-                <th>Media</th>
-                <th>Desviación estándar</th>
-                <th>Num. muestras</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in shannonSummary" :key="row.diseases">
-                <td>{{ row.diseases }}</td>
-                <td>{{ row.mean != null ? row.mean.toFixed(4) : '—' }}</td>
-                <td>{{ row.std != null ? row.std.toFixed(4) : '—' }}</td>
-                <td>{{ row.count != null ? row.count : '—' }}</td>
               </tr>
             </tbody>
           </table>
@@ -351,6 +301,14 @@ const richnessPorGrupo = ref<any[]>([]);
 // Beta diversity
 const betaResults = ref<any[]>([]);
 const selectedSite = ref("");  // para recordar el site seleccionado
+const siteCounts = ref<Record<string,number>>({
+  cervix: 0,
+  uterus: 0,
+  rectum: 0,
+  vagina: 0,
+  orine: 0
+});
+
 
 //Colores
 const colores = [
@@ -547,13 +505,8 @@ function countCases(site: string) {
       getBetaDiversity(site)
       getRichnessPorGrupo(site);
 
-      //  Esperamos a que se actualicen los grupos antes de enviar biomarcadores
+      //  Esperamos a que se actualicen los grupos
       await nextTick()
-      if (numGrupos.value > 0 && selectedSite.value) {
-        getAbundanciaPorGrupo(selectedSite.value);
-
-      }
-
 
     })
     .catch((error) => {
@@ -611,8 +564,6 @@ async function getRichnessPorGrupo(site: string) {
   try {
     const response = await axios.post(`http://localhost:8000/richness?site=${site}`, mapeo);
     richnessPorGrupo.value = response.data;
-    console.log("Richness recibido del backend:", richnessPorGrupo.value);
-
     drawRichnessChart();
   } catch (error) {
     console.error("Error al obtener índice de riqueza:", error);
@@ -662,6 +613,7 @@ async function getBetaDiversity(site: string) {
     const response = await axios.get(`http://localhost:8000/beta?site=${site}`);
     betaResults.value = response.data;
     await nextTick(); //Para asegurar que este listo antes de dibujar
+    
     drawPCoAChart();
     if (numGrupos.value > 0) {
       await nextTick();
@@ -672,14 +624,15 @@ async function getBetaDiversity(site: string) {
     console.error("Error al obtener datos de diversidad beta:", error);
   }
 }
+
+
 /**
  * @brief Obtiene del backend los biomarcadores diferenciales entre dos grupos
  * @param site Nombre del sitio anatómico 
  */
  const biomarcadores = ref([]);
 
- async function getBiomarcadores(site: string) {
-
+async function getBiomarcadores(site: string) {
   if (numGrupos.value < 2) {
     biomarcadores.value = [];
     return;
@@ -694,12 +647,31 @@ async function getBetaDiversity(site: string) {
 
   try {
     const response = await axios.post(`http://localhost:8000/biomarcadores?site=${site}`, mapeo);
-    biomarcadores.value = response.data;
+
+    // Añadir nombre limpio
+    biomarcadores.value = response.data.map((row: any) => {
+      const microKey = row.micro;
+      const entry = mother.value[microKey];
+      const nombre_limpio =
+        entry && (entry[1] || '').trim() !== ''
+          ? entry[1].trim()
+          : entry && (entry[0] || '').trim() !== ''
+          ? entry[0].trim()
+          : row.micro;
+
+      return {
+        ...row,
+        nombre_limpio
+      };
+    });
+
   } catch (error) {
-    console.error(" Error al obtener biomarcadores:", error);
+    console.error("Error al obtener biomarcadores:", error);
     biomarcadores.value = [];
   }
 }
+
+
 
 const abundanciaPorGrupo = ref<any[]>([]);
 
@@ -710,6 +682,7 @@ async function getAbundanciaPorGrupo(site: string) {
       mapeo[d.name] = d.group;
     }
   });
+
   //Evita que cree grupos que no se han asignado
   if (Object.keys(mapeo).length === 0) {
     abundanciaPorGrupo.value = []; // limpiamos el gráfico
@@ -717,12 +690,34 @@ async function getAbundanciaPorGrupo(site: string) {
     return;
   }
   try {
-    const response = await axios.post(`http://localhost:8000/abundancia_por_grupo?site=${site}`, mapeo);
-    abundanciaPorGrupo.value = response.data;
-    drawAbundanciaPorGrupoChartFiltrado(); 
-  } catch (error) {
-    console.error("Error al obtener abundancia por grupo:", error);
-  }
+  const response = await axios.post(`http://localhost:8000/abundancia_por_grupo?site=${site}`, mapeo);
+
+  abundanciaPorGrupo.value = response.data.map((fila, i) => {
+    const microKey = fila.micro.toUpperCase();
+    const entry = mother.value[microKey];
+    let nombre = fila.micro;
+
+    if (entry) {
+      const name1 = (entry[1] || '').trim();
+      const name0 = (entry[0] || '').trim();
+      nombre = name1 !== '' ? name1 : (name0 !== '' ? name0 : fila.micro);
+    }
+
+    if (!colorMap[nombre]) {
+      colorMap[nombre] = colores[i % colores.length];
+    }
+
+    return {
+      ...fila,
+      nombreMostrado: nombre
+    };
+  });
+
+  drawAbundanciaPorGrupoChartFiltrado(); 
+
+} catch (error) {
+  console.error("Error al obtener abundancia por grupo:", error);
+}
 }
 
 
@@ -739,10 +734,10 @@ async function getAbundanciaPorGrupo(site: string) {
     Chart.getChart(canvas)?.destroy();
   }
 
-  const pc1 = betaResults.value["PC1"];
-  const pc2 = betaResults.value["PC2"];
-  const samples = betaResults.value["sample_id"];
-  const diseases = betaResults.value["diseases"];
+  const pc1 = betaResults.value.map(r => r.PC1);
+  const pc2 = betaResults.value.map(r => r.PC2);
+  const samples = betaResults.value.map(r => r.sample_id);
+  const diseases = betaResults.value.map(r => r.diseases);
 
   // Generar un color diferente por enfermedad
   const colorPorEnfermedad: { [key: string]: string } = {
@@ -761,32 +756,32 @@ async function getAbundanciaPorGrupo(site: string) {
   const grupos: { [key: string]: any[] } = {};
 
   // Agrupar puntos por enfermedad
-  Object.keys(pc1).forEach((i) => {
-  const disease = diseases[i];
-  if (!myList.value.includes(disease)) return; // Filtra SOP y ARTERIOVENOUS_MALFORMATION
+  for (let i = 0; i < pc1.length; i++) {
+    const disease = diseases[i];
+    if (!myList.value.includes(disease)) continue;
 
-  if (!grupos[disease]) grupos[disease] = [];
-  grupos[disease].push({
-    x: pc1[i],
-    y: pc2[i],
-    label: samples[i]
-  });
-   
-});
+    if (!grupos[disease]) grupos[disease] = [];
+    grupos[disease].push({
+      x: pc1[i],
+      y: pc2[i],
+      label: betaResults.value[i]["sample-id"] || `Sample ${i + 1}`
+    });
+  }
+
 
 
   // Crear un dataset por enfermedad
   const datasets = Object.keys(grupos).map((disease) => ({
-  label: disease,
-  data: grupos[disease],
-  backgroundColor: colorPorEnfermedad[disease] || '#000000', // fallback negro
-  pointRadius: 7,
-  pointHoverRadius: 10,
-  pointHitRadius: 10, // mejora la detección del ratón
-  parsing: {
-    xAxisKey: 'x',
-    yAxisKey: 'y'
-  }
+    label: disease,
+    data: grupos[disease],
+    backgroundColor: colorPorEnfermedad[disease] || '#000000', // fallback negro
+    pointRadius: 7,
+    pointHoverRadius: 10,
+    pointHitRadius: 10, // mejora la detección del ratón
+    parsing: {
+      xAxisKey: 'x',
+      yAxisKey: 'y'
+    }
   }));
 
 
@@ -821,17 +816,12 @@ async function getAbundanciaPorGrupo(site: string) {
 }
 //Lo mismo por grupos
 function drawPCoAChartPorGrupo() {
-  const canvas = document.getElementById('pcoaChartPorGrupo') as HTMLCanvasElement; //uso DOM
+  const canvas = document.getElementById('pcoaChartPorGrupo') as HTMLCanvasElement;
   if (!canvas || numGrupos.value === 0) return;
 
   if (Chart.getChart(canvas)) {
     Chart.getChart(canvas)?.destroy();
   }
-
-  const pc1 = betaResults.value["PC1"];
-  const pc2 = betaResults.value["PC2"];
-  const samples = betaResults.value["sample_id"];
-  const enfermedades = betaResults.value["diseases"];
 
   // Mapeo de enfermedad a grupo
   const enfermedadAGrupo: Record<string, number> = {};
@@ -840,27 +830,27 @@ function drawPCoAChartPorGrupo() {
   });
 
   const grupos: Record<number, any[]> = {};
-  Object.keys(pc1).forEach(i => {
-    const enfermedad = enfermedades[i];
+  betaResults.value.forEach((fila) => {
+    const enfermedad = fila.diseases;
     const grupo = enfermedadAGrupo[enfermedad];
 
     if (grupo && myList.value.includes(enfermedad)) {
       if (!grupos[grupo]) grupos[grupo] = [];
       grupos[grupo].push({
-        x: pc1[i],
-        y: pc2[i],
-        label: samples[i]
+        x: fila.PC1,
+        y: fila.PC2,
+        label: fila["sample-id"] || `Sample`
       });
     }
   });
 
-  const datasets = Object.keys(grupos).map((g, i) => ({
+  const datasets = Object.keys(grupos).map((g) => ({
     label: `Grupo ${g}`,
     data: grupos[Number(g)],
     backgroundColor: coloresPorGrupos[parseInt(g)] || '#000000',
     pointRadius: 7,
     pointHoverRadius: 10,
-    pointHitRadius: 10, // mejora la detección del ratón
+    pointHitRadius: 10,
     parsing: {
       xAxisKey: 'x',
       yAxisKey: 'y'
@@ -904,53 +894,63 @@ function drawAbundanciaChart() {
   const ctx = document.getElementById('abundanciaChart') as HTMLCanvasElement;
   if (!ctx) return;
 
-  // Destruimos el gráfico anterior si existe
   const oldChart = Chart.getChart(ctx);
   if (oldChart) oldChart.destroy();
 
-  
-  // NO DIBUJAR si no hay enfermedades seleccionadas
   if (myList.value.length === 0) return;
-  //const enfermedades = abundanciaData.value.map(d => d.diseases);
-  const enfermedades = abundanciaData.value
-  .filter(d => myList.value.includes(d.diseases)) //  Filtra aquí
-  .map(d => d.diseases);
 
-  const keys = Object.keys(abundanciaData.value[0]).filter(k => k.startsWith('x'));
+  // Filtrar por enfermedades seleccionadas
+  const filtrado = abundanciaData.value.filter(d => myList.value.includes(d.diseases));
 
-  // Suma total por género
-  const totalAbundancias: Record<string, number> = {};
-  keys.forEach(k => {
-    totalAbundancias[k] = abundanciaData.value.reduce((sum, row) => sum + (row[k] || 0), 0);
+  // Agrupar por enfermedad → micro → sumar abundancia
+  const grupos: Record<string, Record<string, number>> = {};
+  filtrado.forEach(({ diseases, micro, abundance }) => {
+    if (!grupos[diseases]) grupos[diseases] = {};
+    grupos[diseases][micro] = (grupos[diseases][micro] || 0) + abundance;
   });
 
-  const totalMuestras = abundanciaData.value.length;
+  // Lista de enfermedades visibles (labels)
+  const enfermedades = Object.keys(grupos);
 
-  // Filtramos los 15 microorganismos más abundantes
+  // Suma total por microbio (para elegir los top 15)
+  const totalMicro: Record<string, number> = {};
+  filtrado.forEach(({ micro, abundance }) => {
+    totalMicro[micro] = (totalMicro[micro] || 0) + abundance;
+  });
 
-  const sortedKeys = keys.sort((a, b) => totalAbundancias[b] - totalAbundancias[a]);
-  const topKeys = sortedKeys.slice(0, 15);
-  const otherKeys = sortedKeys.slice(15);
-  
-  // Dataset de los top
-    const datasets = topKeys.map((k, i) => ({
-    //.value[k.toUpperCase()]?.[1] || k,
-    label: (mother.value[k.toUpperCase()]?.[1] || '').trim() !== ''
-    ? mother.value[k.toUpperCase()][1]
-    : (mother.value[k.toUpperCase()]?.[0] || k),
+  const topMicro = Object.entries(totalMicro)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15)
+    .map(([m]) => m);
 
-    //data: abundanciaData.value.map(d => d[k]),
-    data: abundanciaData.value.filter(d => myList.value.includes(d.diseases)).map(d => d[k]),
-    backgroundColor: colorMap[k] || '#000000', // usa el mapa de colores
+  const otherMicro = Object.keys(totalMicro).filter(m => !topMicro.includes(m));
+
+  // Colores
+  topMicro.forEach((m, i) => {
+    if (!colorMap[m]) colorMap[m] = colores[i % colores.length];
+  });
+
+  // Normalización por enfermedad
+  const normalizado: Record<string, number> = {};
+  for (const enf in grupos) {
+    const total = Object.values(grupos[enf]).reduce((a, b) => a + b, 0);
+    normalizado[enf] = total > 0 ? total : 1;
+  }
+
+  // Construcción de datasets
+  const datasets = topMicro.map(micro => ({
+    label: (mother.value[micro.toUpperCase()]?.[1] || '').trim() !== ''
+      ? mother.value[micro.toUpperCase()][1]
+      : (mother.value[micro.toUpperCase()]?.[0] || micro),
+    data: enfermedades.map(enf => (grupos[enf]?.[micro] || 0) / normalizado[enf] * 100),
+    backgroundColor: colorMap[micro] || '#000000',
     stack: 'stack1'
   }));
 
-  // Dataset de "otros"
-  //const otros = abundanciaData.value.map(d =>otherKeys.reduce((sum, k) => sum + (d[k] || 0), 0));
-  const otros = abundanciaData.value
-  .filter(d => myList.value.includes(d.diseases)) // aquí también
-  .map(d => otherKeys.reduce((sum, k) => sum + (d[k] || 0), 0));
-
+  // Dataset de "Otros"
+  const otros = enfermedades.map(enf =>
+    otherMicro.reduce((sum, m) => sum + (grupos[enf]?.[m] || 0), 0) / normalizado[enf] * 100
+  );
   datasets.push({
     label: 'Otros',
     data: otros,
@@ -975,21 +975,15 @@ function drawAbundanciaChart() {
           display: true,
           position: 'top',
           labels: {
-            usePointStyle: true ,
-          //  pointStyle: 'rect',
-          //  padding: 20,          // Aumenta la separación entre elementos
-          //  boxWidth: 20,         // Tamaño de icono (mejor clicable)
-          //  boxHeight: 10    
+            usePointStyle: true
           }
-          
         }
       },
       scales: {
-        x: {
-          stacked: true
-        },
+        x: { stacked: true },
         y: {
           stacked: true,
+          max: 100,
           title: {
             display: true,
             text: 'Abundancia relativa (%)'
@@ -1000,6 +994,7 @@ function drawAbundanciaChart() {
   });
 }
 
+/*
 function drawAbundanciaPorGrupoChartFiltrado() {
   const canvas = document.getElementById('abundanciaChartFiltrado') as HTMLCanvasElement;
   if (!canvas) return;
@@ -1093,6 +1088,109 @@ function drawAbundanciaPorGrupoChartFiltrado() {
     }
   });
 }
+*/
+function drawAbundanciaPorGrupoChartFiltrado() {
+  const canvas = document.getElementById('abundanciaChartFiltrado') as HTMLCanvasElement;
+  if (!canvas) return;
+
+  const oldChart = Chart.getChart(canvas);
+  if (oldChart) oldChart.destroy();
+
+  if (!abundanciaPorGrupo.value || abundanciaPorGrupo.value.length === 0) return;
+
+  // Agrupar por grupo
+  const grupos: Record<number, Record<string, number>> = {};
+  abundanciaPorGrupo.value.forEach(fila => {
+    const g = fila.grupo;
+    const micro = fila.micro;
+    const valor = fila.abundance ?? 0;
+    if (!grupos[g]) grupos[g] = {};
+    grupos[g][micro] = valor;
+  });
+
+  const allMicro = Array.from(new Set(abundanciaPorGrupo.value.map(f => f.micro)));
+
+  // Elegir los top 15 microorganismos más abundantes
+  const sumaTotal: Record<string, number> = {};
+  allMicro.forEach(m => {
+    sumaTotal[m] = abundanciaPorGrupo.value
+      .filter(f => f.micro === m)
+      .reduce((sum, f) => sum + (f.abundance || 0), 0);
+  });
+
+  const topMicro = Object.entries(sumaTotal)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15)
+    .map(([key]) => key);
+
+  const otherMicro = allMicro.filter(m => !topMicro.includes(m));
+  const labels = Object.keys(grupos).map(g => `Grupo ${g}`);
+
+  // Recalcula porcentajes normalizados por fila
+  const normalizadoPorGrupo: Record<number, number> = {};
+  Object.entries(grupos).forEach(([g, fila]) => {
+    const suma = Object.values(fila).reduce((acc, val) => acc + val, 0);
+    normalizadoPorGrupo[+g] = suma > 0 ? suma : 1; // evita división por 0
+  });
+
+  const datasets = topMicro.map(micro => {
+    const filaConNombre = abundanciaPorGrupo.value.find(f => f.micro === micro);
+    const nombre = filaConNombre?.nombreMostrado || micro;
+
+    return {
+      label: nombre,
+      backgroundColor: colorMap[nombre] || '#000000',
+      data: Object.keys(grupos).map(g => (grupos[+g][micro] || 0) / normalizadoPorGrupo[+g] * 100),
+      stack: 'stack1'
+    };
+  });
+
+  // Dataset de "Otros"
+  const otros = Object.keys(grupos).map(g =>
+    otherMicro.reduce((sum, micro) => sum + (grupos[+g][micro] || 0), 0) / normalizadoPorGrupo[+g] * 100
+  );
+
+
+  datasets.push({
+    label: 'Otros',
+    data: otros,
+    backgroundColor: '#999999',
+    stack: 'stack1'
+  });
+
+
+  new Chart(canvas, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Abundancia relativa por grupo'
+        },
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            usePointStyle: true
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true },
+        y: {
+          stacked: true,
+          max: 100,
+          title: {
+            display: true,
+            text: 'Abundancia relativa (%)'
+          }
+        }
+      }
+    }
+  });
+}
 
 function drawRichnessChart() {
   const canvas = document.getElementById('richnessChart') as HTMLCanvasElement;
@@ -1162,20 +1260,25 @@ function drawRichnessChart() {
  *      y muestra una gráfica inicial si hay canvas disponible
  */
 onMounted(() => {
+  // 1. Cargar diccionario 'mother'
   axios
-    .get(import.meta.env.VITE_API_URL +'data/'+ 'all')
-    .then((response) => {
+    .get(import.meta.env.VITE_API_URL + 'data/mother')
+    .then((res) => {
+      mother.value = res.data;
+    });
 
-      mother.value = response.data
-      check()
-      
+  // 2. Cargar diccionario de muestras por site
+  axios.get(import.meta.env.VITE_API_URL + 'data/all')
+    .then((res) => {
+      check();
     })
     .catch((error) => {
-      console.error('Error:', error)
-    })
+      console.error('Error:', error);
+  });
+
+  contarTodosLosSitios();
     //Comprobación
     nextTick(() => {
-      console.log("Violinplot data:", shannonViolinData.value);
 
     const canvas = document.getElementById('shannonChart') as HTMLCanvasElement;
     if (canvas) {
@@ -1187,9 +1290,6 @@ onMounted(() => {
       });
     }
     const checks = document.querySelectorAll('.disease-check') as NodeListOf<HTMLInputElement>;
-    checks.forEach(c => {
-      console.log("Checkbox ID:", c.id, " Value:", c.value);
-    });
   });
   
 })
@@ -1331,6 +1431,19 @@ function check()  {
   }
 
 
+}
+
+async function contarTodosLosSitios() {
+  const sitios = ['cervix', 'uterus', 'rectum', 'vagina', 'orine'];
+  for (const sitio of sitios) {
+    try {
+      const response = await axios.get(import.meta.env.VITE_API_URL + 'data/' + sitio);
+      siteCounts.value[sitio] = response.data.length;
+    } catch (error) {
+      console.warn(`Error al contar muestras en ${sitio}:`, error);
+      siteCounts.value[sitio] = 0;
+    }
+  }
 }
 
 function resetSelections() {

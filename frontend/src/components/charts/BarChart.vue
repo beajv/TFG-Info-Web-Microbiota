@@ -59,7 +59,7 @@ export default {
   data() {
     return {
       chartLabels: ['Cervix', 'Uterus', 'Rectum', 'Vagina', 'Urine'],
-      chartValues: [82, 79, 89, 89, 86],
+      chartValues: [106, 102,112 , 113, 110],
       chartColors: [
         'rgba(75, 192, 192, 0.2)',
         'rgba(75, 192, 192, 0.2)',
