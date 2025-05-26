@@ -5,6 +5,7 @@ from skbio.diversity import beta_diversity
 from skbio.stats.ordination import pcoa
 import numpy as np
 from myapp.config import engine
+from scipy.stats import mannwhitneyu, kruskal
 ##
 #   Carga los datos de abundancia microbiana desde la base de datos PostgreSQL.
 #   @param site: Nombre del sitio anatómico (por ejemplo, 'cervix', 'vagina', etc.)
@@ -151,7 +152,9 @@ def calcular_abundancia_por_grupo(site: str, mapeo_enfermedad_a_grupo: dict):
     df = df[df["grupo"].notna()]  # Elimina enfermedades sin grupo asignado
 
     # Elimina columnas no microbianas antes del melt
-    cols_micro = [col for col in df.columns if col.startswith("x") and df[col].dtype in [float, int]]
+    cols_micro = [col for col in df.columns if col.startswith("x")]
+    df[cols_micro] = df[cols_micro].apply(pd.to_numeric, errors='coerce')
+
     df_largo = df[["sample-id", "grupo"] + cols_micro].melt(
         id_vars=["sample-id", "grupo"], var_name="micro", value_name="abundance"
     )
@@ -164,10 +167,80 @@ def calcular_abundancia_por_grupo(site: str, mapeo_enfermedad_a_grupo: dict):
 
     
     # Agrupar correctamente antes de renombrar
-    resumen = df_largo.groupby(["grupo", "nombre_mostrado"])["abundance"].mean().reset_index()
+    resumen = (
+        df_largo
+        .groupby(["grupo", "nombre_mostrado"], dropna=False)["abundance"]
+        .mean()
+        .reset_index()
+    )
+
     resumen = resumen.rename(columns={"nombre_mostrado": "micro"})
+
+    # Sustituye NaN en todas las columnas (especialmente 'abundance') por None
+    resumen = resumen.fillna(value={"abundance": 0.0})  # Evita los NaN en la media
+    resumen = resumen.where(pd.notnull(resumen), None)  # Asegura que no quedan otros NaN
 
     return resumen.to_dict(orient="records")
 
 
+
+def calcular_biomarcadores(site: str, mapeo_enfermedad_a_grupo: dict):
+    query = f"SELECT * FROM {site};"
+    df = pd.read_sql_query(query, engine)
+
+    df["grupo"] = df["diseases"].map(mapeo_enfermedad_a_grupo)
+    df = df[df["grupo"].notna()]
+
+    micro_cols = [col for col in df.columns if col.startswith("x")]
+    df[micro_cols] = df[micro_cols].apply(pd.to_numeric, errors='coerce').fillna(0)
+
+    grupos_unicos = sorted(df["grupo"].unique())
+    n_grupos = len(grupos_unicos)
+
+    resultado = []
+    tipo_test = "mannwhitney" if n_grupos == 2 else "kruskalwallis"
+
+    for micro in micro_cols:
+        grupos = [df[df["grupo"] == g][micro].values for g in grupos_unicos]
+
+        # Saltar si todas las abundancias son cero
+        if all((g == 0).all() for g in grupos):
+            continue
+
+        try:
+            if n_grupos == 2:
+                _, p_value = mannwhitneyu(grupos[0], grupos[1], alternative='two-sided')
+            else:
+                _, p_value = kruskal(*grupos)
+        except Exception:
+            p_value = None
+
+        fila = {
+            "micro": micro,
+            "p_value": p_value,
+            "test": tipo_test
+        }
+
+        # Añadir media, std y conteo por grupo
+        for idx, g in enumerate(grupos_unicos):
+            valores = df[df["grupo"] == g][micro].values
+            total_muestras = len(df[df["grupo"] == g])
+            n_muestras_con_micro = (valores > 0).sum()
+
+            fila[f"mean_g{idx+1}"] = float(valores.mean())
+            fila[f"std_g{idx+1}"] = float(valores.std())
+            fila[f"n_g{idx+1}"] = int(n_muestras_con_micro)
+            fila[f"total_g{idx+1}"] = int(total_muestras)
+
+        resultado.append(fila)
+
+        # Mapeo de nombres limpios
+        df_mother = pd.read_sql_query("SELECT * FROM mother", engine)
+        nombre_dict = df_mother.set_index("codigo")["nombre_limpio"].to_dict()
+
+        for fila in resultado:
+            cod = fila["micro"].lower()
+            fila["micro"] = nombre_dict.get(cod, cod)
+
+    return resultado
 

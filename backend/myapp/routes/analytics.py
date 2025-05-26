@@ -14,11 +14,11 @@ from myapp.services.analytics import cargar_abundancias
 from myapp.services.analytics import calcular_richness
 from myapp.services.analytics import calcular_abundancia_por_grupo
 from myapp.services.analytics import calcular_abundancias_por_disease
-
+from myapp.services.analytics import calcular_biomarcadores
 """No lo he podido usar porque necesita que ambos grupos tengan mismo
 numero de muestras y dado que esto iba a resultar dificil he opctado por Mann-Whitney U"""
 from scipy.stats import wilcoxon 
-from scipy.stats import mannwhitneyu
+from scipy.stats import mannwhitneyu, kruskal
 import pandas as pd
 import numpy as np
 from fastapi import Body
@@ -155,67 +155,25 @@ def calcular_beta(site: str = Query(...)):
 """
 
 @router.post("/biomarcadores")
-def get_biomarcadores(
-    site: str = Query(...),
-    grupos: dict = Body(...)
-):
+def get_biomarcadores(site: str = Query(...), grupos: dict = Body(...)):
     try:
-        df = cargar_abundancias(site)
-        df["grupo"] = df["diseases"].map(grupos)  # se usa el diccionario enviado
+        resultado = calcular_biomarcadores(site, grupos)
 
-        keys_microorganismos = [col for col in df.columns if col.startswith("x")]
-        resultados = []
-
-        for micro in keys_microorganismos:
-            g1 = df[df["grupo"] == 1][micro].dropna()
-            g2 = df[df["grupo"] == 2][micro].dropna()
-
-            total_g1 = int((df["grupo"] == 1).sum())
-            total_g2 = int((df["grupo"] == 2).sum())
-
-            n_g1 = int((g1 > 0).sum())
-            n_g2 = int((g2 > 0).sum())
-
-            if n_g1 == 0 and n_g2 == 0:
-                continue
-
-            p = None
-            if n_g1 > 0 and n_g2 > 0:
-                try:
-                    stat, p = mannwhitneyu(g1, g2, alternative='two-sided')
-                except Exception as err:
-                    print(f"Error en Mann–Whitney para {micro}: {err}")
-                    p = None
-
-            resultados.append({
-                "micro": micro,
-                "mean_g1": g1.mean(),
-                "std_g1": g1.std(),
-                "n_g1": n_g1,
-                "mean_g2": g2.mean(),
-                "std_g2": g2.std(),
-                "n_g2": n_g2,
-                "p_value": p,
-                "total_g1": total_g1,
-                "total_g2": total_g2
-            })
-
-
-        # Reemplaza NaN por None en todo el resultado
         def limpiar_nans(diccionario):
             return {
                 k: (None if isinstance(v, float) and math.isnan(v) else v)
                 for k, v in diccionario.items()
             }
 
-        resultado_limpio = [limpiar_nans(fila) for fila in resultados]
+        resultado_limpio = [limpiar_nans(fila) for fila in resultado]
         return resultado_limpio
 
     except Exception as e:
-        print("Error en get_biomarcadores:")
+        print("Error en /biomarcadores:", str(e))
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
-
+    
+    
 @router.post("/abundancia_por_grupo")
 def abundancia_por_grupo(site: str = Query(...), grupos: dict = Body(...)):
     resultado = calcular_abundancia_por_grupo(site, grupos)

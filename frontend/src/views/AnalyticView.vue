@@ -145,36 +145,57 @@
         </div>
         
 
-        <h5 class="mt-4">Differentially abundant biomarkers between groups (Mann–Whitney U test)</h5>
-          <table class="table table-sm table-bordered">
+        <h5 class="mt-4">
+          Differentially abundant biomarkers between groups
+          <span v-if="nombreTest">
+            (<span v-if="nombreTest === 'mannwhitney'">Mann–Whitney U</span>
+            <span v-else-if="nombreTest === 'kruskalwallis'">Kruskal–Wallis</span>
+            test)
+          </span>
+        </h5>
+
+          <table class="table table-sm table-bordered w-auto text-center align-middle">
             <thead class="table-warning">
               <tr>
                 <th>Microorganism</th>
-                <th>Group 1<br>(% samples, mean ± std)</th>
-                <th>Group 2<br>(% samples, mean ± std)</th>
-                <th>p-value</th>
+                <th v-for="g in numGrupos" :key="'grupo'+g">
+                  Group {{ g }}<br>(% samples, mean ± std)
+                </th>
+                <th>p-value<br><span v-if="nombreTest">(test: {{ nombreTest }})</span></th>
               </tr>
             </thead>
             <tbody>
               <tr 
-                  v-for="row in biomarcadores"
-                  :key="row.micro"
-                  :class="{ 'fila-significativa': esSignificativo(row.p_value) }"
-                >
-
+                v-for="row in biomarcadores"
+                :key="row.micro"
+                :class="{ 'fila-significativa': esSignificativo(row.p_value) }"
+              >
                 <td>{{ row.nombre_limpio || row.micro }}</td>
 
-               <td>
-                  {{ row.n_g1 }}/{{ row.total_g1 }} muestras,
-                  {{ ((row.n_g1 / row.total_g1) * 100).toFixed(2) }} % <br>
-                  {{ row.mean_g1 != null ? row.mean_g1.toFixed(2) : '—' }} ± {{ row.std_g1 != null ? row.std_g1.toFixed(2) : '—' }}
+                <!-- Columnas dinámicas por grupo -->
+                <td v-for="g in numGrupos" :key="'valor'+g">
+                  <div v-if="row['n_g' + g] != null">
+                    {{ row['n_g' + g] }} / {{ row['total_g' + g] }} muestras,<br>
+                    {{
+                      row['total_g' + g] > 0
+                        ? ((row['n_g' + g] / row['total_g' + g]) * 100).toFixed(2) + ' %'
+                        : '—'
+                    }}<br>
+                    {{
+                      row['mean_g' + g] != null
+                        ? row['mean_g' + g].toFixed(2)
+                        : '—'
+                    }} ± {{
+                      row['std_g' + g] != null
+                        ? row['std_g' + g].toFixed(2)
+                        : '—'
+                    }}
+                  </div>
+                  <div v-else>—</div>
                 </td>
-                <td>
-                  {{ row.n_g2 }}/{{ row.total_g2 }} muestras,
-                  {{ ((row.n_g2 / row.total_g2) * 100).toFixed(2) }} % <br>
-                  {{ row.mean_g2 != null ? row.mean_g2.toFixed(2) : '—' }} ± {{ row.std_g2 != null ? row.std_g2.toFixed(2) : '—' }}
-                </td>
-                <td>{{ row.p_value ? row.p_value.toExponential(2) : '—' }}</td>
+                  <td>
+                    {{ row.p_value != null ? Number(row.p_value).toExponential(2) : '—' }}
+                  </td>
               </tr>
             </tbody>
           </table>
@@ -309,6 +330,7 @@ const siteCounts = ref<Record<string,number>>({
   orine: 0
 });
 
+const nombreTest = ref<string|null>(null);
 
 //Colores
 const colores = [
@@ -646,9 +668,9 @@ async function getBiomarcadores(site: string) {
   });
 
   try {
+    console.log("Enviando mapeo para biomarcadores: ", mapeo);
     const response = await axios.post(`http://localhost:8000/biomarcadores?site=${site}`, mapeo);
 
-    // Añadir nombre limpio
     biomarcadores.value = response.data.map((row: any) => {
       const microKey = row.micro;
       const entry = mother.value[microKey];
@@ -664,6 +686,10 @@ async function getBiomarcadores(site: string) {
         nombre_limpio
       };
     });
+    console.log("Respuesta del backend:", response.data);
+
+    nombreTest.value = response.data.length > 0 ? response.data[0].test : null;
+
 
   } catch (error) {
     console.error("Error al obtener biomarcadores:", error);
