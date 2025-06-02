@@ -66,14 +66,19 @@ for site in sitios:
     ]
     df = df[[col for col in ordered_cols if col in df.columns]]
 
-    # Limpieza: comas decimales, a punto y conversión a numérico si posible
-    for col in df.columns:
-        if df[col].dtype == object:
-            df[col] = df[col].astype(str).str.replace(",", ".")
-            df[col] = pd.to_numeric(df[col], errors='ignore')  # deja strings si no puede convertir
+    import re
+    def es_numero_valido(x):
+        if pd.isna(x):
+            return True
+        if isinstance(x, (int, float)):
+            return True
+        x = str(x).replace(",", ".").strip()
+        return bool(re.match(r'^-?\d+(\.\d+)?$', x))
 
-    # Reemplazar valores no numéricos por None (si quedan)
-    df = df.applymap(lambda x: None if isinstance(x, str) and not x.replace('.', '', 1).isdigit() else x)
+    for col in df.columns:
+        if col.startswith("x") or col in ["age", "weight_kg", "height_m", "bmi", "lh"]:
+            df[col] = df[col].astype(str).str.replace(",", ".")
+            df[col] = df[col].apply(lambda x: float(x) if es_numero_valido(x) else None)
 
     # Preparar inserción SQL
     columnas_sql = [f'"{col}"' for col in df.columns]

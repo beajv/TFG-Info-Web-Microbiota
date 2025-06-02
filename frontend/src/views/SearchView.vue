@@ -67,7 +67,11 @@
         </tbody>
       </table>
     </div>
-  
+    
+    <div v-if="selectedBacteria && selectedSite && noEncontrado" class="alert alert-warning mt-4 text-center">
+      No se encontraron datos de abundancia para "{{ selectedBacteria }}" en "{{ selectedSite }}"
+    </div>
+
   
 </template>
 
@@ -87,6 +91,7 @@ const abundanciaData = ref<any[]>([]); // Guarda el resultado del backend
 const allBacteria = ref<string[]>([]);
 const bacteriaToX = ref<Record<string, string>>({});
 
+const noEncontrado = ref(false);
 
 
 /**
@@ -146,6 +151,7 @@ async function getAbundancia(bacteria: string, site: string) {
     if (!microId) {
     console.warn(` No se encontró el ID para la bacteria ${bacteria}`);
     abundanciaData.value = [];
+    noEncontrado.value=true;
     return;
   }
     const response = await axios.get(`${import.meta.env.VITE_API_URL}search_abundancia`, {
@@ -159,6 +165,7 @@ async function getAbundancia(bacteria: string, site: string) {
   } catch (error) {
     console.error('Error al obtener abundancia:', error);
     abundanciaData.value = [];
+    noEncontrado.value=true;
   }
 }
 

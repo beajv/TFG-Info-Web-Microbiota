@@ -1,18 +1,24 @@
-# Utiliza la imagen base de Python
-FROM python:3.9
+FROM continuumio/miniconda3
 
-# Establece el directorio de trabajo en /app
+# Crea un entorno con Python 3.9 y activa conda
+RUN conda create -n microbioma python=3.9 -y
+SHELL ["conda", "run", "-n", "microbioma", "/bin/bash", "-c"]
+
+# Instala dependencias del sistema y del entorno
+RUN apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
+
+# Instala librerías necesarias con conda y pip
+COPY requirements.txt .
+RUN conda install -n microbioma -y -c conda-forge scikit-bio pandas numpy && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Establece el directorio de trabajo
 WORKDIR /app
 
-# Copia los archivos de la aplicación al contenedor
-COPY requirements.txt .
 COPY myapp/ myapp/
 
-# Instala las dependencias de la aplicación
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Expone el puerto 8000 (el puerto en el que se ejecuta FastAPI)
+# Expone el puerto de FastAPI
 EXPOSE 8000
 
-# Inicia la aplicación FastAPI
-CMD ["uvicorn", "myapp.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Comando de inicio
+CMD ["conda", "run", "-n", "microbioma", "uvicorn", "myapp.main:app", "--host", "0.0.0.0", "--port", "8000"]

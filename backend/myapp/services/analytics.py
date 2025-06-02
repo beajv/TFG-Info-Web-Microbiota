@@ -5,7 +5,13 @@ from skbio.diversity import beta_diversity
 from skbio.stats.ordination import pcoa
 import numpy as np
 from myapp.config import engine
+import logging
+from sqlalchemy import text
 from scipy.stats import mannwhitneyu, kruskal
+from skbio.stats.distance import permanova
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 ##
 #   Carga los datos de abundancia microbiana desde la base de datos PostgreSQL.
 #   @param site: Nombre del sitio anatómico (por ejemplo, 'cervix', 'vagina', etc.)
@@ -13,7 +19,9 @@ from scipy.stats import mannwhitneyu, kruskal
 #   
 def cargar_abundancias(site: str):
     query = f"SELECT * FROM {site};"
-    df = pd.read_sql_query(query, engine)
+    with engine.connect() as connection:
+        df = pd.read_sql_query(text(query), connection)
+
     return df
 
 
@@ -24,23 +32,84 @@ def cargar_abundancias(site: str):
 # 
 def calcular_shannon_por_site(site: str):
     query = f"SELECT * FROM {site};"
-    df = pd.read_sql_query(query, engine)
+    with engine.connect() as connection:
+        df = pd.read_sql_query(text(query), connection)
+
+
 
     abundancias = df.filter(regex='^x')
     abundancias = abundancias.apply(pd.to_numeric, errors='coerce').fillna(0)
     df['shannon'] = abundancias.apply(shannon, axis=1)
 
-    resumen_muestra = df[['sample-id', 'diseases', 'shannon']]
+    resumen_muestra = df[['sample_id', 'diseases', 'shannon']]
     resumen_enfermedad = df.groupby('diseases')['shannon'].agg(['mean', 'std', 'count']).reset_index()
 
     return resumen_muestra, resumen_enfermedad
+
+def calcular_pvalor_shannon(site: str, mapeo_enfermedad_a_grupo: dict):
+
+    df = cargar_abundancias(site)
+    df["grupo"] = df["diseases"].map(mapeo_enfermedad_a_grupo)
+    df = df[df["grupo"].notna()]
+
+    abundancias = df.filter(regex='^x').apply(pd.to_numeric, errors='coerce').fillna(0)
+    df["shannon"] = abundancias.apply(shannon, axis=1)
+
+    grupos = df["grupo"].unique()
+    datos_por_grupo = [df[df["grupo"] == g]["shannon"].dropna().values for g in grupos]  # 👈 dropna() clave
+
+    try:
+        if len(grupos) == 2:
+            stat, p_value = mannwhitneyu(*datos_por_grupo, alternative='two-sided')
+            test = "mannwhitney"
+        elif len(grupos) > 2:
+            stat, p_value = kruskal(*datos_por_grupo)
+            test = "kruskal"
+        else:
+            raise ValueError("No hay suficientes grupos para el test.")
+    except Exception as e:
+        print(f" Error al calcular p-valor de Shannon para {site}: {e}")
+        return {"p_value": None, "test": "error_during_test"}
+
+    return {"p_value": p_value, "test": test}
+
+
+def calcular_pvalor_richness(site: str, mapeo_enfermedad_a_grupo: dict):
+    df = cargar_abundancias(site)
+    df["grupo"] = df["diseases"].map(mapeo_enfermedad_a_grupo)
+    df = df[df["grupo"].notna()]
+
+    # Calcular índice de riqueza (número de géneros con abundancia > 0)
+    abundancias = df.filter(regex='^x').apply(pd.to_numeric, errors='coerce').fillna(0)
+    df["richness"] = abundancias.gt(0).sum(axis=1)  # número de géneros no nulos
+
+    grupos = df["grupo"].unique()
+    datos_por_grupo = [df[df["grupo"] == g]["richness"].dropna().values for g in grupos]
+
+    try:
+        if len(grupos) == 2:
+            stat, p_value = mannwhitneyu(*datos_por_grupo, alternative='two-sided')
+            test = "mannwhitney"
+        elif len(grupos) > 2:
+            stat, p_value = kruskal(*datos_por_grupo)
+            test = "kruskal"
+        else:
+            raise ValueError("No hay suficientes grupos para el test.")
+    except Exception as e:
+        print(f"Error al calcular p-valor de Richness para {site}: {e}")
+        return {"p_value": None, "test": "error_during_test"}
+
+    return {"p_value": p_value, "test": test}
+
 
 ##
 # Calcula la riqueza
 #
 def calcular_richness(site: str, mapeo_enfermedad_a_grupo: dict):
     query = f"SELECT * FROM {site};"
-    df = pd.read_sql_query(query, engine)
+    with engine.connect() as connection:
+        df = pd.read_sql_query(text(query), connection)
+
 
     df["grupo"] = df["diseases"].map(mapeo_enfermedad_a_grupo)
     df = df[df["grupo"].notna()]
@@ -58,9 +127,13 @@ def calcular_richness(site: str, mapeo_enfermedad_a_grupo: dict):
 # 
 def calcular_abundancias_por_disease(site: str):
     query = f"SELECT * FROM {site};"
-    df = pd.read_sql_query(query, engine)
+    with engine.connect() as connection:
+        tablas = connection.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public';")).fetchall()
+        df = pd.read_sql_query(text(query), connection)
 
+   
     abundancias = df.filter(regex='^x')
+   
     df_abund = pd.concat([df[['diseases']], abundancias], axis=1)
 
     # Convertir a formato largo
@@ -74,7 +147,9 @@ def calcular_abundancias_por_disease(site: str):
 
 
     # Mapear a nombres reales
-    df_mother = pd.read_sql_query("SELECT * FROM mother", engine)
+    with engine.connect() as connection:
+        df_mother = pd.read_sql_query(text("SELECT * FROM mother"), connection)
+
     df_largo = df_largo.merge(df_mother[['codigo', 'nombre_limpio']], how='left', left_on='micro', right_on='codigo')
     df_largo['micro'] = df_largo['nombre_limpio'].fillna(df_largo['micro'])
     df_largo.drop(['codigo', 'nombre_limpio'], axis=1, inplace=True)
@@ -101,13 +176,14 @@ def calcular_abundancias_por_disease(site: str):
 #
 
 def calcular_beta_diversity(site: str):
-    print(f" Calculando diversidad beta + PCoA para {site}")
 
     query = f"SELECT * FROM {site};"
-    df = pd.read_sql_query(query, engine)
+    
+    with engine.connect() as connection:
+        df = pd.read_sql_query(text(query), connection)
 
-    # Obtener sample-ids
-    sample_ids = df["sample-id"].astype(str).tolist()
+    # Obtener sample_ids
+    sample_ids = df["sample_id"].astype(str).tolist()
 
     cols_x = [col for col in df.columns if col.startswith("x") and df[col].dtype in [float, int]]
     abundancias = df[cols_x]
@@ -115,7 +191,7 @@ def calcular_beta_diversity(site: str):
     # Eliminar filas donde todas las abundancias son 0
     filtro = (abundancias > 0).any(axis=1)
     abundancias = abundancias[filtro]
-    sample_ids = df.loc[filtro, "sample-id"].astype(str).tolist()
+    sample_ids = df.loc[filtro, "sample_id"].astype(str).tolist()
 
     # Convertir a NumPy y limpiar
     abundancias_np = abundancias.to_numpy()
@@ -123,30 +199,78 @@ def calcular_beta_diversity(site: str):
 
 
     if abundancias_np.shape[0] != len(sample_ids):
-        print(" Hay descuadre de tamaño. Ajustando...")
         min_len = min(abundancias_np.shape[0], len(sample_ids))
         abundancias_np = abundancias_np[:min_len]
         sample_ids = sample_ids[:min_len]
 
     # Calcular matriz de distancias
+    # Matriz de distancias
     distance_matrix = beta_diversity("braycurtis", abundancias_np, ids=sample_ids)
 
+    # PERMANOVA
+    df_grupos = df.loc[filtro, ["sample_id", "diseases"]].copy()
+    df_grupos.set_index("sample_id", inplace=True)
+    permanova_result = permanova(distance_matrix, df_grupos["diseases"], permutations=999)
+    p_value = permanova_result["p-value"]
     # PCoA
     ordination_result = pcoa(distance_matrix)
     pcoa_df = ordination_result.samples.iloc[:, :2]
-    pcoa_df["sample-id"] = pcoa_df.index
+    pcoa_df["sample_id"] = pcoa_df.index
 
     # Unir con enfermedades
-    merged_df = pd.merge(pcoa_df, df[["sample-id", "diseases"]], on="sample-id", how="left")
+    merged_df = pd.merge(pcoa_df, df[["sample_id", "diseases"]], on="sample_id", how="left")
 
-    return merged_df
+    # Añadir p-valor global
+    return {
+        "pcoa": merged_df.to_dict(orient="records"),
+        "p_value": p_value
+    }
 
+def calcular_beta_diversity_por_grupos(site: str, mapeo_enfermedad_a_grupo: dict):
+    query = f"SELECT * FROM {site};"
+    with engine.connect() as connection:
+        df = pd.read_sql_query(text(query), connection)
+
+    df["grupo"] = df["diseases"].map(mapeo_enfermedad_a_grupo)
+    df = df[df["grupo"].notna()]
+    
+    sample_ids = df["sample_id"].astype(str).tolist()
+    cols_x = [col for col in df.columns if col.startswith("x")]
+    abundancias = df[cols_x].apply(pd.to_numeric, errors='coerce').fillna(0)
+
+    # Eliminar filas con todo ceros
+    filtro = (abundancias > 0).any(axis=1)
+    abundancias = abundancias[filtro]
+    df = df[filtro]
+    sample_ids = df["sample_id"].tolist()
+
+    matriz = beta_diversity("braycurtis", abundancias.to_numpy(), ids=sample_ids)
+    
+    df_grupos = df.set_index("sample_id")[["grupo"]]
+    resultado_permanova = permanova(matriz, df_grupos["grupo"], permutations=999)
+    p_value = resultado_permanova["p-value"]
+
+    ordination = pcoa(matriz)
+    coords = ordination.samples.iloc[:, :2]
+    coords["sample_id"] = coords.index
+
+    merged = pd.merge(coords, df[["sample_id", "diseases", "grupo"]], on="sample_id", how="left")
+
+    return {
+        "pcoa": merged.to_dict(orient="records"),
+        "p_value": p_value
+    }
 
 
 
 def calcular_abundancia_por_grupo(site: str, mapeo_enfermedad_a_grupo: dict):
+    
     query = f"SELECT * FROM {site};"
-    df = pd.read_sql_query(query, engine)
+    
+
+    with engine.connect() as connection:
+        df = pd.read_sql_query(text(query), connection)
+
 
     df["grupo"] = df["diseases"].map(mapeo_enfermedad_a_grupo)
     df = df[df["grupo"].notna()]  # Elimina enfermedades sin grupo asignado
@@ -155,10 +279,12 @@ def calcular_abundancia_por_grupo(site: str, mapeo_enfermedad_a_grupo: dict):
     cols_micro = [col for col in df.columns if col.startswith("x")]
     df[cols_micro] = df[cols_micro].apply(pd.to_numeric, errors='coerce')
 
-    df_largo = df[["sample-id", "grupo"] + cols_micro].melt(
-        id_vars=["sample-id", "grupo"], var_name="micro", value_name="abundance"
+    df_largo = df[["sample_id", "grupo"] + cols_micro].melt(
+        id_vars=["sample_id", "grupo"], var_name="micro", value_name="abundance"
     )
-    df_mother = pd.read_sql_query("SELECT * FROM mother", engine)
+    with engine.connect() as connection:
+        df_mother = pd.read_sql_query(text("SELECT * FROM mother"), connection)
+
     df_largo = df_largo.merge(df_mother[['codigo', 'nombre_limpio']], how='left', left_on='micro', right_on='codigo')
     df_largo['micro'] = df_largo['nombre_limpio'].fillna(df_largo['micro'])
     df_largo['nombre_mostrado'] = df_largo['nombre_limpio'].fillna(df_largo['micro'])
@@ -186,7 +312,9 @@ def calcular_abundancia_por_grupo(site: str, mapeo_enfermedad_a_grupo: dict):
 
 def calcular_biomarcadores(site: str, mapeo_enfermedad_a_grupo: dict):
     query = f"SELECT * FROM {site};"
-    df = pd.read_sql_query(query, engine)
+    with engine.connect() as connection:
+        df = pd.read_sql_query(text(query), connection)
+
 
     df["grupo"] = df["diseases"].map(mapeo_enfermedad_a_grupo)
     df = df[df["grupo"].notna()]
@@ -235,7 +363,9 @@ def calcular_biomarcadores(site: str, mapeo_enfermedad_a_grupo: dict):
         resultado.append(fila)
 
         # Mapeo de nombres limpios
-        df_mother = pd.read_sql_query("SELECT * FROM mother", engine)
+        with engine.connect() as connection:
+            df_mother = pd.read_sql_query(text("SELECT * FROM mother"), connection)
+
         nombre_dict = df_mother.set_index("codigo")["nombre_limpio"].to_dict()
 
         for fila in resultado:

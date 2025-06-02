@@ -37,6 +37,16 @@ for _, row in mother_df.iterrows():
 # Leer todas las hojas del Excel
 excel = pd.ExcelFile(EXCEL_PATH)
 sheets = excel.sheet_names
+# Conexión a PostgreSQL
+conn = psycopg2.connect(**DB_PARAMS)
+cur = conn.cursor()
+
+# BORRAR todas las tablas si ya existían (para evitar errores)
+cur.execute("DROP TABLE IF EXISTS cervix, orine, rectum, uterus, vagina;")
+conn.commit()
+
+# Leer equivalencias desde mother
+mother_query = "SELECT codigo, nombre_original FROM mother"
 
 for sitio in SITIOS:
     hojas = [s for s in sheets if sitio in s.lower()]

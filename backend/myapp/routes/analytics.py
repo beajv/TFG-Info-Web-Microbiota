@@ -15,6 +15,9 @@ from myapp.services.analytics import calcular_richness
 from myapp.services.analytics import calcular_abundancia_por_grupo
 from myapp.services.analytics import calcular_abundancias_por_disease
 from myapp.services.analytics import calcular_biomarcadores
+from myapp.services.analytics import calcular_beta_diversity_por_grupos
+from myapp.services.analytics import calcular_pvalor_shannon
+from myapp.services.analytics import calcular_pvalor_richness
 """No lo he podido usar porque necesita que ambos grupos tengan mismo
 numero de muestras y dado que esto iba a resultar dificil he opctado por Mann-Whitney U"""
 from scipy.stats import wilcoxon 
@@ -79,6 +82,13 @@ def calcular_shannon(site: str = Query(...)):
         print(" ERROR en /shannon:", str(e))  
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+@router.post("/shannon_pvalue")
+def endpoint_shannon_pvalue(
+    site: str = Query(...),
+    mapeo_enfermedad_a_grupo: dict = Body(...)
+):
+    return calcular_pvalor_shannon(site, mapeo_enfermedad_a_grupo)
+
 """
     Calcula la riqueza
 """
@@ -91,6 +101,14 @@ def calcular_richness_endpoint(site: str = Query(...), grupos: dict = Body(...))
     except Exception as e:
         print("Error en /richness:", str(e))
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@router.post("/richness_pvalue")
+def endpoint_richness_pvalue(
+    site: str = Query(...),
+    mapeo_enfermedad_a_grupo: dict = Body(...)
+):
+    return calcular_pvalor_richness(site, mapeo_enfermedad_a_grupo)
 
 
 
@@ -128,14 +146,49 @@ def calcular_beta(site: str = Query(...)):
 
             return dict_list
 
-        resultado_limpio = limpiar_nan_para_json(resultado)
+        # Limpiar solo la parte PCoA
+        resultado_limpio = {
+            "pcoa": limpiar_nan_para_json(pd.DataFrame(resultado["pcoa"])),
+            "p_value": float(resultado["p_value"])  # asegurar que sea JSON serializable
+        }
 
         return JSONResponse(content=resultado_limpio)
+
 
 
     except Exception as e:
         print(" ERROR en /beta:", str(e))
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+
+@router.post("/beta_por_grupo")
+def calcular_beta_por_grupo(site: str = Query(...), grupos: dict = Body(...)):
+    try:
+        resultado = calcular_beta_diversity_por_grupos(site, grupos)
+
+        def limpiar_nan_para_json(df):
+            df = df.replace([np.inf, -np.inf], np.nan)
+            df = df.where(pd.notnull(df), None)
+            dict_list = df.to_dict(orient='records')
+            for fila in dict_list:
+                for k, v in fila.items():
+                    if isinstance(v, float) and (np.isnan(v) or np.isinf(v)):
+                        fila[k] = None
+                    elif isinstance(v, (np.integer, np.floating)):
+                        fila[k] = v.item()
+            return dict_list
+
+        resultado_limpio = {
+            "pcoa": limpiar_nan_para_json(pd.DataFrame(resultado["pcoa"])),
+            "p_value": float(resultado["p_value"])
+        }
+
+        return JSONResponse(content=resultado_limpio)
+    except Exception as e:
+        print(" Error en /beta_por_grupo:", str(e))
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 
 
 """

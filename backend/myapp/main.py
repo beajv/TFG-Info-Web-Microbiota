@@ -21,6 +21,29 @@ from myapp.routes import search
 from myapp.routes import summary
 
 import math
+
+
+import time
+from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
+from myapp.config import DATABASE_URL  
+
+import logging
+logging.basicConfig(level=logging.INFO)
+
+# Esperar a que la base de datos esté lista
+for i in range(10):
+    try:
+        with engine.connect() as conn:
+            print("Conectado a PostgreSQL.")
+            break
+    except OperationalError:
+        print(" Esperando a que PostgreSQL esté listo...")
+        time.sleep(3)
+else:
+    raise Exception(" No se pudo conectar a PostgreSQL después de varios intentos.")
+
+
 #Inicializa las tablas si no existen
 models.Base.metadata.create_all(bind=engine)
 
@@ -121,7 +144,10 @@ async def data(table: str, db: Session = Depends(get_db) ):
     sites = ['cervix', 'uterus', 'rectum', 'vagina', 'orine']
     if table in sites:
       query = text(f"SELECT * FROM {table}")
-      result = db.execute(query)
+      with engine.connect() as connection:
+        result = connection.execute(query)
+
+      
       column_names = result.keys()
       
       def limpiar_nan(obj):
@@ -150,14 +176,7 @@ async def data(table: str, db: Session = Depends(get_db) ):
 
     return items
 
-##
-# @brief Endpoint que devuelve las abundancias relativas agrupadas por enfermedad.
-# @param site Sitio anatómico desde donde se extraen las muestras.
-# @return JSON con abundancias medias por enfermedad.
-#
-@app.get("/abundancias")
-def abundancias(site: str):
-    return calcular_abundancias_por_disease(site)
+
 
 # Código de prueba
 if __name__ == "__main__":
