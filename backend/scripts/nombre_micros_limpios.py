@@ -25,4 +25,4 @@ df["nombre_limpio"] = df["nombre_microorganismo"].apply(extraer_limpio_v2)
 
 # Guardar nuevo Excel
 df.to_excel(salida, index=False)
-print(f"✅ Archivo generado: {salida}")
+print(f" Archivo generado: {salida}")

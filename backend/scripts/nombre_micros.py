@@ -21,4 +21,4 @@ df["nombre_microorganismo"] = df["nombre_original"].apply(extraer_nombre_final)
 # Guardar el nuevo Excel
 df.to_excel(salida, index=False)
 
-print(f"✅ Archivo generado: {salida}")
+print(f" Archivo generado: {salida}")

@@ -26,7 +26,7 @@ for sitio in sitios:
         columnas = [col[0] for col in columnas]
         print("Columnas:", columnas)
     except Exception as e:
-        print(f"  ❌ Error accediendo a {sitio}: {e}")
+        print(f"   Error accediendo a {sitio}: {e}")
 
 cur.close()
 conn.close()

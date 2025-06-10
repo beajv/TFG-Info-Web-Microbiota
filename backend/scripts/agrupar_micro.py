@@ -20,4 +20,4 @@ df_ordenado["nuevo_codigo"] = (
 ruta_salida = "microorganismos_unificados.xlsx"
 df_ordenado.to_excel(ruta_salida, index=False)
 
-print(f"✅ Archivo generado: {ruta_salida}")
+print(f" Archivo generado: {ruta_salida}")

@@ -52,4 +52,4 @@ if col_nombre:
             ws.cell(row=row, column=col_nombre).fill = colores[valor]
 
 wb.save(archivo_salida)
-print("✅ Listo: microorganismos_coloreado.xlsx generado con colores por duplicado.")
+print(" Listo: microorganismos_coloreado.xlsx generado con colores por duplicado.")

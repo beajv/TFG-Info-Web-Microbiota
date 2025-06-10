@@ -10,7 +10,7 @@ df = pd.read_sql_query("SELECT * FROM cervix", conn)
 df_mother = pd.read_sql_query("SELECT * FROM mother", conn)
 conn.close()
 
-# 🧪 Filtrar solo columnas tipo xNN
+#  Filtrar solo columnas tipo xNN
 cols_micro = [col for col in df.columns if col.startswith("x")]
 df_largo = df.melt(id_vars=["sample_id", "diseases"], value_vars=cols_micro,
                    var_name="micro", value_name="abundance")

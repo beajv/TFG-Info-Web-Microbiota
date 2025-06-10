@@ -13,7 +13,7 @@ conn = psycopg2.connect(
 )
 
 for site in sitios:
-    print(f"\n🔍 Verificando sitio: {site}")
+    print(f"\n Verificando sitio: {site}")
     df = pd.read_sql_query(f"SELECT * FROM {site}", conn)
     micro_cols = [col for col in df.columns if col.startswith("x")]
 
@@ -24,9 +24,9 @@ for site in sitios:
     faltantes = [x for x in micro_cols if x.lower() not in mapped_indices]
 
     if faltantes:
-        print(f"❌ {len(faltantes)} columnas xNN sin mapeo en mother:")
+        print(f" {len(faltantes)} columnas xNN sin mapeo en mother:")
         print(", ".join(faltantes))
     else:
-        print("✅ Todas las columnas xNN están correctamente mapeadas en mother.")
+        print(" Todas las columnas xNN están correctamente mapeadas en mother.")
 
 conn.close()
