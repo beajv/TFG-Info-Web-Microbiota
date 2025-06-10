@@ -16,6 +16,7 @@ SQLAlchemy==2.0.15
 psycopg2-binary==2.9.6
 pandas==1.5.3
 openpyxl==3.0.10
+pytest==8.4.0
 
 
 
