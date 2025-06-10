@@ -19,7 +19,8 @@ openpyxl==3.0.10
 pytest==8.4.0
 httpx==0.27.0
 numpy==1.24.4
-scikit-bio==0.5.8
+scikit-bio @ https://files.pythonhosted.org/packages/35/d8/bd2cc8bdb843e4e14768f95d493e7c5d1e2d563d9488591e5d2bb62c660f/scikit_bio-0.5.8-cp39-cp39-manylinux1_x86_64.whl
+
 
 
 
