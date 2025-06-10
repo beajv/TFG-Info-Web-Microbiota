@@ -3,7 +3,7 @@ name: Run Backend Tests
 on: [push, pull_request]
 
 jobs:
-  test-backend:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,8 +17,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install fastapi uvicorn pytest httpx
-
+        pip install fastapi uvicorn pytest httpx celery
 
     - name: Run tests
       run: |
