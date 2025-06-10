@@ -20,4 +20,4 @@ jobs:
         pip install fastapi uvicorn pytest
 
     - name: Run tests
-      run: pytest tests/
+      run: pytest backend/tests/
