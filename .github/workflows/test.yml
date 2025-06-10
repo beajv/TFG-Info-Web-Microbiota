@@ -18,16 +18,11 @@ jobs:
     - name: Instalar compiladores y librerías del sistema
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential libblas-dev liblapack-dev
+        sudo apt-get install -y build-essential libblas-dev liblapack-dev gfortran
 
-
-    - name: Instalar Cython (necesario antes de scikit-bio)
+    - name: Instalar Cython y NumPy (necesarios antes de scikit-bio)
       run: |
-        pip install cython==3.0.10
-
-    - name: Instalar NumPy (antes que pandas y scikit-bio)
-      run: |
-        pip install numpy==1.24.4
+        pip install cython==3.0.10 numpy==1.24.4
 
     - name: Instalar dependencias del proyecto
       run: |
