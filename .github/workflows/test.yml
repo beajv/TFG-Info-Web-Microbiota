@@ -15,11 +15,18 @@ jobs:
       with:
         python-version: '3.9'
 
-    - name: Instalar herramientas y dependencias previas
+    - name: Instalar compiladores del sistema
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential
-        pip install cython numpy==1.24.4
+
+    - name: Instalar Cython (necesario antes de scikit-bio)
+      run: |
+        pip install cython==3.0.10
+
+    - name: Instalar NumPy (antes que pandas y scikit-bio)
+      run: |
+        pip install numpy==1.24.4
 
     - name: Instalar dependencias del proyecto
       run: |
