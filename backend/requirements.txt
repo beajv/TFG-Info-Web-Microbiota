@@ -19,4 +19,5 @@ openpyxl==3.0.10
 pytest==8.4.0
 httpx==0.27.0
 numpy==1.23.5
-scikit-bio==0.5.8
+scikit-bio @ git+https://github.com/biocore/scikit-bio.git@master
+
