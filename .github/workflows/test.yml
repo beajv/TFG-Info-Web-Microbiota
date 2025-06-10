@@ -17,7 +17,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install fastapi uvicorn pytest httpx celery
+        pip install fastapi uvicorn pytest httpx celery sqlalchemy
 
     - name: Run tests
       run: |
