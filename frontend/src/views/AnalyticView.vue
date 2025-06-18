@@ -597,7 +597,9 @@ function countCases(site: string) {
  */
 async function getShannonDiversity(site: string) {
   try {
-    const response = await axios.get(`http://localhost:8000/shannon?site=${site}`);
+    //const response = await axios.get(`http://localhost:8000/shannon?site=${site}`);
+    const response = await axios.get(`${import.meta.env.VITE_API_URL}shannon?site=${site}`);
+
     shannonResults.value = response.data.resumen_muestra;
     shannonSummary.value = response.data.resumen_enfermedad;
     await nextTick()  // Espera a que el DOM esté actualizado
@@ -648,7 +650,9 @@ async function getShannonPValue(site: string) {
   }
 
   try {
-    const response = await axios.post(`http://localhost:8000/shannon_pvalue?site=${site}`, mapeo);
+    //const response = await axios.post(`http://localhost:8000/shannon_pvalue?site=${site}`, mapeo);
+    const response = await axios.post(`${import.meta.env.VITE_API_URL}shannon_pvalue?site=${site}`, mapeo);
+
     shannonPValue.value = response.data.p_value;
     shannonTest.value = response.data.test;
   } catch (error) {
@@ -682,7 +686,9 @@ async function getRichnessPValue(site: string) {
   }
 
   try {
-    const response = await axios.post(`http://localhost:8000/richness_pvalue?site=${site}`, mapeo);
+    //const response = await axios.post(`http://localhost:8000/richness_pvalue?site=${site}`, mapeo);
+    const response = await axios.post(`${import.meta.env.VITE_API_URL}richness_pvalue?site=${site}`, mapeo);
+
     richnessPValue.value = response.data.p_value;
     richnessTest.value = response.data.test;
   } catch (error) {
@@ -714,7 +720,9 @@ async function getRichnessPorGrupo(site: string) {
   });
 
   try {
-    const response = await axios.post(`http://localhost:8000/richness?site=${site}`, mapeo);
+    //const response = await axios.post(`http://localhost:8000/richness?site=${site}`, mapeo);
+    const response = await axios.post(`${import.meta.env.VITE_API_URL}richness?site=${site}`, mapeo);
+
     richnessPorGrupo.value = response.data;
     drawRichnessChart();
   } catch (error) {
@@ -730,7 +738,9 @@ async function getRichnessPorGrupo(site: string) {
  */
 async function getAbundanciaData(site: string) {
   try {
-    const response = await axios.get(`http://localhost:8000/abundancias?site=${site}`);
+    //const response = await axios.get(`http://localhost:8000/abundancias?site=${site}`);
+    const response = await axios.get(`${import.meta.env.VITE_API_URL}abundancias?site=${site}`);
+
     abundanciaData.value = response.data;
 
     const keys = Object.keys(abundanciaData.value[0]).filter(k => k.startsWith('x'));
@@ -760,7 +770,9 @@ async function getAbundanciaData(site: string) {
 async function getBetaDiversity(site: string) {
   try {
     // 1. Obtener SIEMPRE los datos de diversidad beta por enfermedad
-    const responseEnfermedad = await axios.get(`http://localhost:8000/beta?site=${site}`);
+    //const responseEnfermedad = await axios.get(`http://localhost:8000/beta?site=${site}`);
+    const responseEnfermedad = await axios.get(`${import.meta.env.VITE_API_URL}beta?site=${site}`);
+
     betaResultsPorEnfermedad.value = responseEnfermedad.data;
     await nextTick();
 
@@ -776,7 +788,9 @@ async function getBetaDiversity(site: string) {
 
     const gruposUnicos = new Set(Object.values(mapeo));
     if (gruposUnicos.size >= 2) {
-      const responseGrupo = await axios.post(`http://localhost:8000/beta_por_grupo?site=${site}`, mapeo);
+      //const responseGrupo = await axios.post(`http://localhost:8000/beta_por_grupo?site=${site}`, mapeo);
+      const responseGrupo = await axios.post(`${import.meta.env.VITE_API_URL}beta_por_grupo?site=${site}`, mapeo);
+
       betaResults.value = responseGrupo.data;
       await nextTick();
       drawPCoAChartPorGrupo(); 
@@ -817,7 +831,8 @@ async function getBiomarcadores(site: string) {
   });
 
   try {
-    const response = await axios.post(`http://localhost:8000/biomarcadores?site=${site}`, mapeo);
+    //const response = await axios.post(`http://localhost:8000/biomarcadores?site=${site}`, mapeo);
+    const response = await axios.post(`${import.meta.env.VITE_API_URL}biomarcadores?site=${site}`, mapeo);
 
     biomarcadores.value = response.data.map((row: any) => {
       const microKey = row.micro;
@@ -870,7 +885,8 @@ async function getAbundanciaPorGrupo(site: string) {
     return;
   }
   try {
-  const response = await axios.post(`http://localhost:8000/abundancia_por_grupo?site=${site}`, mapeo);
+  //const response = await axios.post(`http://localhost:8000/abundancia_por_grupo?site=${site}`, mapeo);
+  const response = await axios.post(`${import.meta.env.VITE_API_URL}abundancia_por_grupo?site=${site}`, mapeo);
 
   abundanciaPorGrupo.value = response.data.map((fila, i) => {
     const microKey = fila.micro.toUpperCase();
