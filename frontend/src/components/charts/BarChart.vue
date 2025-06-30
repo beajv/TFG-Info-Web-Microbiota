@@ -46,12 +46,12 @@ export default {
             this.handleChartColorLabel(index)
           }
         },
-        onClick: (event, elements) => {
+        onClick: (event, elements) => {/**
           if (elements.length > 0) {
             const index = elements[0].index;
             const routes = ['cervix', 'uterus', 'rectum', 'vagina', 'orine']
             window.location.href = "/data/" + routes[index]
-          }
+          }**/
         }
       }
     });

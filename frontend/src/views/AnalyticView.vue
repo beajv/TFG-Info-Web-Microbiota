@@ -140,7 +140,7 @@
                 PERMANOVA p-value:
                 <strong>
                   {{ betaResults.p_value.toExponential(2) }}
-                  <span v-if="betaResults.p_value < 0.05" title="Significativo"> ➡️Es significativo </span>
+                  <span v-if="betaResults.p_value < 0.05" title="Significativo"> ➡️Statistically significant </span>
                 </strong>
               </small>
             </div>
@@ -159,7 +159,7 @@
                 Shannon α-diversity p-value:
                 <strong>
                   {{ shannonPValue.toExponential(2) }}
-                  <span v-if="shannonPValue < 0.05" title="Significativo"> ➡️ Es significativo </span>
+                  <span v-if="shannonPValue < 0.05" title="Significativo"> ➡️ Statistically significant </span>
                 </strong>
                 <span v-if="shannonTest"> ({{ shannonTest }})</span>
               </small>
@@ -177,7 +177,7 @@
                   Richness α-diversity p-value:
                   <strong>
                     {{ richnessPValue.toExponential(2) }}
-                    <span v-if="richnessPValue < 0.05" title="Significativo"> ➡️ Es significativo </span>
+                    <span v-if="richnessPValue < 0.05" title="Significativo"> ➡️ Statistically significant </span>
                   </strong>
                   <span v-if="richnessTest"> ({{ richnessTest }})</span>
                 </small>

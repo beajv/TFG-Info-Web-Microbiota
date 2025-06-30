@@ -145,6 +145,7 @@ async function selectBacteria(bacteria: string) {
 }
 
 async function getAbundancia(bacteria: string, site: string) {
+  noEncontrado.value = false;
   try {
     const microId = bacteriaToX.value[bacteria]?.toLowerCase();  // "x17"
     //Prueba
@@ -162,6 +163,8 @@ async function getAbundancia(bacteria: string, site: string) {
     });
 
     abundanciaData.value = response.data;
+    noEncontrado.value = abundanciaData.value.length === 0;
+
   } catch (error) {
     console.error('Error al obtener abundancia:', error);
     abundanciaData.value = [];
